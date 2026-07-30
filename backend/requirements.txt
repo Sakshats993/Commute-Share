@@ -1,0 +1,60 @@
+# ==========================================
+# CommuteShare Backend Dependencies
+# ==========================================
+
+# ----------------------------
+# FastAPI Framework
+# ----------------------------
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# ----------------------------
+# Database
+# ----------------------------
+sqlalchemy==2.0.41
+psycopg[binary]==3.2.9
+alembic==1.16.1
+
+# ----------------------------
+# Validation & Configuration
+# ----------------------------
+pydantic==2.11.5
+pydantic-settings==2.9.1
+email-validator==2.2.0
+
+# ----------------------------
+# Authentication & Security
+# ----------------------------
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+python-multipart==0.0.20
+
+# ----------------------------
+# Environment Variables
+# ----------------------------
+python-dotenv==1.1.0
+
+# ----------------------------
+# Geolocation & Maps
+# ----------------------------
+geopy==2.4.1
+
+# ----------------------------
+# Logging
+# ----------------------------
+loguru==0.7.3
+
+# ----------------------------
+# Testing
+# ----------------------------
+pytest==8.4.0
+pytest-asyncio==1.0.0
+httpx==0.28.1
+
+# ----------------------------
+# Code Quality (Development)
+# ----------------------------
+black==25.1.0
+ruff==0.11.13
+isort==6.0.1

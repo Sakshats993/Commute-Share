@@ -23,6 +23,52 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import RideStatus
 
+# ======================================================
+# Driver Summary
+# ======================================================
+
+class DriverSummary(BaseModel):
+    """
+    Driver information returned with a ride.
+    """
+
+    id: int
+
+    full_name: str
+
+    email: str
+
+    average_rating: float
+
+    review_count: int
+
+    completed_rides: int
+
+    is_verified: bool
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+# ======================================================
+# Vehicle Summary
+# ======================================================
+
+class VehicleSummary(BaseModel):
+    """
+    Vehicle information returned with a ride.
+    """
+
+    id: int
+    make: str
+    model: str
+    color: str
+    registration_number: str
+    seating_capacity: int
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 # ======================================================
 # Base Schema
@@ -192,7 +238,11 @@ class RideResponse(RideBase):
 
     driver_id: int
 
+    driver: DriverSummary
+
     available_seats: int
+
+    vehicle: VehicleSummary
 
     status: RideStatus
 

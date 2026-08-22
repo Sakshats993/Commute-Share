@@ -9,12 +9,12 @@ export default function useRatings() {
 
     const [error, setError] = useState(null);
 
-    async function loadRatings(userId) {
+    async function loadRatings() {
         try {
             setLoading(true);
 
             const data =
-                await ratingApi.getUserRatings(userId);
+                await ratingApi.getMyRatings();
 
             setRatings(data);
 
@@ -26,6 +26,32 @@ export default function useRatings() {
             setLoading(false);
         }
     }
+
+    const [candidates, setCandidates] = useState([]);
+
+    async function loadCandidates() {
+        try {
+            const data =
+                await ratingApi.getRatingCandidates();
+
+            setCandidates(data);
+        } catch (err) {
+            setError(err);
+            throw err;
+        }
+    }
+
+    return {
+        ratings,
+        candidates,
+        loading,
+        error,
+        loadRatings,
+        loadCandidates,
+        addRating,
+        editRating,
+        removeRating,
+    };
 
     async function addRating(data) {
         try {

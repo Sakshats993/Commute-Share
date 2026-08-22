@@ -14,10 +14,12 @@ from app.schemas.misc import (
     RatingCreate,
     RatingResponse,
     RatingUpdate,
+    RatingCandidateResponse,
 )
 from app.services.rating_service import (
     create_rating,
     delete_rating,
+    get_rating_candidates,
     get_user_ratings,
     update_rating,
 )
@@ -48,7 +50,47 @@ def create_rating_route(
         reviewer=current_user,
     )
 
+@router.get(
+    "/me",
+    response_model=list[RatingResponse],
+)
+def get_my_ratings_route(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_ratings(
+        db=db,
+        user_id=current_user.id,
+    )
 
+@router.get(
+    "/candidates",
+    response_model=list[RatingCandidateResponse],
+)
+def get_rating_candidates_route(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_rating_candidates(
+        db=db,
+        current_user=current_user,
+    )
+# =====================================================
+# Get My Ratings
+# =====================================================
+
+@router.get(
+    "/me",
+    response_model=list[RatingResponse],
+)
+def get_my_ratings_route(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_ratings(
+        db=db,
+        user_id=current_user.id,
+    )
 # =====================================================
 # Get Ratings for User
 # =====================================================

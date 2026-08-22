@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 
 const initialState = {
-    ride_id: "",
-    reviewee_id: "",
     rating: 5,
     review: "",
 };
 
 export default function RatingForm({
+    candidate,
     initialValues,
     onSubmit,
     submitting,
@@ -18,16 +17,13 @@ export default function RatingForm({
     useEffect(() => {
         if (initialValues) {
             setFormData({
-                ride_id:
-                    initialValues.ride_id ?? "",
-                reviewee_id:
-                    initialValues.reviewee_id ??
-                    "",
                 rating:
                     initialValues.rating ?? 5,
                 review:
                     initialValues.review ?? "",
             });
+        } else {
+            setFormData(initialState);
         }
     }, [initialValues]);
 
@@ -46,52 +42,62 @@ export default function RatingForm({
     function handleSubmit(e) {
         e.preventDefault();
 
+        if (!candidate && !initialValues) {
+            return;
+        }
+
         onSubmit(formData);
     }
+
+    if (!candidate && !initialValues) {
+        return null;
+    }
+
+    const role =
+        candidate?.reviewee_role ??
+        "user";
+
+    const title =
+        role === "driver"
+            ? "Rate Your Driver"
+            : "Rate Your Passenger";
+
+    const personLabel =
+        role === "driver"
+            ? "Driver"
+            : "Passenger";
 
     return (
         <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-xl shadow p-6 space-y-4"
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5"
         >
-            {!initialValues && (
-                <>
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Ride ID
-                        </label>
+            <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                    {title}
+                </h2>
 
-                        <input
-                            type="number"
-                            name="ride_id"
-                            value={formData.ride_id}
-                            onChange={handleChange}
-                            required
-                            className="w-full border rounded-lg p-3"
-                        />
+                {candidate && (
+                    <div className="mt-3 rounded-xl bg-gray-50 p-4">
+                        <p className="text-sm text-gray-500">
+                            {personLabel}
+                        </p>
+
+                        <p className="text-lg font-semibold text-gray-900">
+                            {candidate.reviewee_name}
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                            {candidate.pickup_location}
+                            {" → "}
+                            {candidate.destination_location}
+                        </p>
                     </div>
-
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Reviewee ID
-                        </label>
-
-                        <input
-                            type="number"
-                            name="reviewee_id"
-                            value={
-                                formData.reviewee_id
-                            }
-                            onChange={handleChange}
-                            required
-                            className="w-full border rounded-lg p-3"
-                        />
-                    </div>
-                </>
-            )}
+                )}
+            </div>
 
             <div>
-                <label className="block mb-1 font-medium">
+                <label className="block mb-2 font-medium text-gray-900">
                     Rating
                 </label>
 
@@ -99,13 +105,15 @@ export default function RatingForm({
                     name="rating"
                     value={formData.rating}
                     onChange={handleChange}
-                    className="w-full border rounded-lg p-3"
+                    className="w-full border border-gray-300 rounded-lg p-3"
                 >
-                    {[1, 2, 3, 4, 5].map((star) => (
+                    {[5, 4, 3, 2, 1].map((star) => (
                         <option
                             key={star}
                             value={star}
                         >
+                            {"★".repeat(star)}
+                            {" "}
                             {star} Star
                         </option>
                     ))}
@@ -113,8 +121,8 @@ export default function RatingForm({
             </div>
 
             <div>
-                <label className="block mb-1 font-medium">
-                    Review
+                <label className="block mb-2 font-medium text-gray-900">
+                    Your Review
                 </label>
 
                 <textarea
@@ -122,17 +130,18 @@ export default function RatingForm({
                     rows={4}
                     value={formData.review}
                     onChange={handleChange}
-                    className="w-full border rounded-lg p-3"
+                    placeholder={`Write a review about the ${role}...`}
+                    className="w-full border border-gray-300 rounded-lg p-3"
                 />
             </div>
 
             <button
                 type="submit"
                 disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-3 rounded-lg"
             >
                 {submitting
-                    ? "Saving..."
+                    ? "Submitting..."
                     : initialValues
                     ? "Update Rating"
                     : "Submit Rating"}

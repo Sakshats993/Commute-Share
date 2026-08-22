@@ -85,7 +85,7 @@ export default function AppRoutes() {
             />
 
             <Route
-                path="/ratings/:userId"
+                path="/ratings"
                 element={
                     <ProtectedRoute>
                         <RatingsPage />

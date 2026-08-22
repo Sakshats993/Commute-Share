@@ -2,16 +2,24 @@ import api from "./axios";
 
 export async function createRating(data) {
     const response = await api.post(
-        "/ratings",
+        "/ratings/",
         data
     );
 
     return response.data;
 }
 
-export async function getUserRatings(userId) {
+export async function getMyRatings() {
     const response = await api.get(
-        `/ratings/user/${userId}`
+        "/ratings/me"
+    );
+
+    return response.data;
+}
+
+export async function getRatingCandidates() {
+    const response = await api.get(
+        "/ratings/candidates"
     );
 
     return response.data;

@@ -13,13 +13,19 @@ Handles:
 - Booking Statistics
 ==================================================
 """
-
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.deps import (
     get_current_active_user,
     get_db,
+    require_driver,
 )
 
 from app.models.user import User
@@ -32,6 +38,7 @@ from app.schemas.booking import (
 from app.services.booking_service import (
     book_ride,
     cancel_booking,
+    confirm_booking,
     get_booking_by_id,
     get_booking_statistics,
     get_ride_bookings,
@@ -78,7 +85,6 @@ def create_booking_route(
 # ==========================================================
 # Ride Bookings
 # ==========================================================
-
 @router.get(
     "/ride/{ride_id}",
     response_model=list[BookingResponse],
@@ -86,10 +92,25 @@ def create_booking_route(
 def ride_bookings(
     ride_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_driver),
 ):
     """
     Return bookings for a ride.
+
+    Only the driver who owns the ride
+    can view passenger bookings.
     """
+
+    ride = get_ride_by_id(
+        db=db,
+        ride_id=ride_id,
+    )
+
+    if ride.driver_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view bookings for your own rides.",
+        )
 
     return get_ride_bookings(
         db=db,
@@ -133,6 +154,35 @@ def my_bookings(
     return get_user_bookings(
         db=db,
         user_id=current_user.id,
+    )
+
+# ==========================================================
+# Confirm Booking
+# ==========================================================
+
+@router.patch(
+    "/{booking_id}/confirm",
+)
+def confirm_booking_route(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_driver),
+):
+    booking = get_booking_by_id(
+        db=db,
+        booking_id=booking_id,
+    )
+
+    if booking.ride.driver_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only confirm bookings for your own rides.",
+        )
+
+    return confirm_booking(
+        db=db,
+        booking=booking,
+        driver=current_user,
     )
 
 # ==========================================================

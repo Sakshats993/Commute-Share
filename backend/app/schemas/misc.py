@@ -26,13 +26,13 @@ from app.models.enums import NotificationType, SOSStatus
 # ======================================================
 # Rating Schemas
 # ======================================================
-
-
 class RatingCreate(BaseModel):
-    ride_id: int
-    reviewee_id: int
+    booking_id: int
     rating: int = Field(..., ge=1, le=5)
-    review: Optional[str] = Field(None, max_length=500)
+    review: Optional[str] = Field(
+        None,
+        max_length=500,
+    )
 
 
 # ======================================================
@@ -49,12 +49,32 @@ class RatingResponse(BaseModel):
     id: int
     ride_id: int
     reviewer_id: int
+    reviewer_name: str
+    reviewer_role: str
     reviewee_id: int
     rating: int
     review: Optional[str]
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+class RatingCandidateResponse(BaseModel):
+    booking_id: int
+    ride_id: int
+
+    reviewee_id: int
+    reviewee_name: str
+    reviewee_role: str
+
+    pickup_location: str
+    destination_location: str
+    departure_time: datetime
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 # ======================================================
 # Notification Schemas
@@ -109,16 +129,19 @@ class WaitlistResponse(BaseModel):
 # ======================================================
 # SOS Schemas
 # ======================================================
-
 class SOSCreate(BaseModel):
     """
     Create an SOS event.
+
+    The user only needs to trigger the SOS.
+    Ride context and emergency details can be
+    determined by the backend.
     """
 
-    ride_id: int
+    ride_id: Optional[int] = None
 
     emergency_type: str = Field(
-        ...,
+        default="Emergency",
         max_length=100,
     )
 
@@ -127,18 +150,21 @@ class SOSCreate(BaseModel):
         max_length=1000,
     )
 
-    latitude: float = Field(
-        ...,
+    latitude: Optional[float] = Field(
+        default=None,
         ge=-90,
         le=90,
     )
 
-    longitude: float = Field(
-        ...,
+    longitude: Optional[float] = Field(
+        default=None,
         ge=-180,
         le=180,
     )
 
+# ======================================================
+# SOS Response
+# ======================================================
 
 class SOSResponse(BaseModel):
     """
@@ -149,15 +175,15 @@ class SOSResponse(BaseModel):
 
     user_id: int
 
-    ride_id: int
+    ride_id: Optional[int] = None
 
     emergency_type: str
 
-    description: Optional[str]
+    description: Optional[str] = None
 
-    latitude: float
+    latitude: Optional[float] = None
 
-    longitude: float
+    longitude: Optional[float] = None
 
     status: SOSStatus
 
@@ -166,7 +192,6 @@ class SOSResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
     )
-
 
 # ======================================================
 # Admin Dashboard

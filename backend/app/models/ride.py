@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
+    Boolean,
     Enum,
     ForeignKey,
     Numeric,
@@ -43,6 +44,7 @@ from sqlalchemy.orm import (
 from app.models.base_model import BaseModel
 from app.models.enums import RideStatus
 
+
 if TYPE_CHECKING:
     from app.models.booking import Booking
     from app.models.user import User
@@ -50,6 +52,7 @@ if TYPE_CHECKING:
     from app.models.waitlist import Waitlist
     from app.models.rating import Rating
     from app.models.sos_event import SOSEvent
+    from app.models.payment import Payment
 
 class Ride(BaseModel):
     """
@@ -122,6 +125,30 @@ class Ride(BaseModel):
     )
 
     estimated_arrival_time: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+        # ======================================================
+    # Ride Lifecycle
+    # ======================================================
+
+    boarding_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    driver_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    passenger_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
@@ -201,6 +228,11 @@ class Ride(BaseModel):
     )
     
     sos_events: Mapped[list["SOSEvent"]] = relationship(
+    back_populates="ride",
+    cascade="all, delete-orphan",
+    lazy="selectin",
+    )
+    payments: Mapped[list["Payment"]] = relationship(
     back_populates="ride",
     cascade="all, delete-orphan",
     lazy="selectin",

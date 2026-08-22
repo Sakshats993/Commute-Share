@@ -23,87 +23,81 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import RideStatus
 
+# ======================================================
+# Driver Summary
+# ======================================================
+
+class DriverSummary(BaseModel):
+    """
+    Driver information returned with a ride.
+    """
+
+    id: int
+
+    full_name: str
+
+    email: str
+
+    average_rating: float
+
+    review_count: int
+
+    completed_rides: int
+
+    is_verified: bool
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 # ======================================================
-# Base Schema
+# Vehicle Summary
 # ======================================================
 
-class RideBase(BaseModel):
+class VehicleSummary(BaseModel):
     """
-    Common ride fields.
+    Vehicle information returned with a ride.
     """
 
-    vehicle_id: int
+    id: int
+    make: str
+    model: str
+    color: str
+    registration_number: str
+    seating_capacity: int
 
-    pickup_location: str = Field(
-        ...,
-        min_length=2,
-        max_length=255,
+    model_config = ConfigDict(
+        from_attributes=True,
     )
-
-    pickup_latitude: float = Field(
-        ...,
-        ge=-90,
-        le=90,
-    )
-
-    pickup_longitude: float = Field(
-        ...,
-        ge=-180,
-        le=180,
-    )
-
-    destination_location: str = Field(
-        ...,
-        min_length=2,
-        max_length=255,
-    )
-
-    destination_latitude: float = Field(
-        ...,
-        ge=-90,
-        le=90,
-    )
-
-    destination_longitude: float = Field(
-        ...,
-        ge=-180,
-        le=180,
-    )
-
-    departure_time: datetime
-
-    estimated_arrival_time: Optional[datetime] = None
-
-    total_seats: int = Field(
-        ...,
-        ge=1,
-        le=10,
-    )
-
-    price_per_seat: Decimal = Field(
-        ...,
-        ge=0,
-    )
-
-    notes: Optional[str] = Field(
-        default=None,
-        max_length=1000,
-    )
-
 
 # ======================================================
 # Create Ride
 # ======================================================
 
-class RideCreate(RideBase):
-    """
-    Schema used when creating a ride.
-    """
+class RideCreate(BaseModel):
+    vehicle_make: str
+    vehicle_model: str
+    vehicle_color: str
+    registration_number: str
+    vehicle_seating_capacity: int
 
-    pass
+    pickup_location: str
+    pickup_latitude: float
+    pickup_longitude: float
+
+    destination_location: str
+    destination_latitude: float
+    destination_longitude: float
+
+    departure_time: datetime
+    estimated_arrival_time: Optional[datetime] = None
+
+    total_seats: int
+    price_per_seat: Decimal
+    notes: Optional[str] = None
 
 
+# ======================================================
 # ======================================================
 # Update Ride
 # ======================================================
@@ -113,97 +107,62 @@ class RideUpdate(BaseModel):
     Schema used to update ride details.
     """
 
-    vehicle_id: Optional[int] = None
+    pickup_location: Optional[str] = None
+    pickup_latitude: Optional[float] = None
+    pickup_longitude: Optional[float] = None
 
-    pickup_location: Optional[str] = Field(
-        default=None,
-        min_length=2,
-        max_length=255,
-    )
-
-    pickup_latitude: Optional[float] = Field(
-        default=None,
-        ge=-90,
-        le=90,
-    )
-
-    pickup_longitude: Optional[float] = Field(
-        default=None,
-        ge=-180,
-        le=180,
-    )
-
-    destination_location: Optional[str] = Field(
-        default=None,
-        min_length=2,
-        max_length=255,
-    )
-
-    destination_latitude: Optional[float] = Field(
-        default=None,
-        ge=-90,
-        le=90,
-    )
-
-    destination_longitude: Optional[float] = Field(
-        default=None,
-        ge=-180,
-        le=180,
-    )
+    destination_location: Optional[str] = None
+    destination_latitude: Optional[float] = None
+    destination_longitude: Optional[float] = None
 
     departure_time: Optional[datetime] = None
-
     estimated_arrival_time: Optional[datetime] = None
 
-    total_seats: Optional[int] = Field(
-        default=None,
-        ge=1,
-        le=10,
-    )
+    total_seats: Optional[int] = None
+    price_per_seat: Optional[Decimal] = None
 
-    price_per_seat: Optional[Decimal] = Field(
-        default=None,
-        ge=0,
-    )
-
-    notes: Optional[str] = Field(
-        default=None,
-        max_length=1000,
-    )
+    notes: Optional[str] = None
 
     status: Optional[RideStatus] = None
 
     model_config = ConfigDict(
         extra="forbid",
-        str_strip_whitespace=True,
+        from_attributes=True,
     )
-
-
 # ======================================================
 # Ride Response
 # ======================================================
-
-class RideResponse(RideBase):
-    """
-    Ride information returned by the API.
-    """
-
+class RideResponse(BaseModel):
     id: int
-
     driver_id: int
 
+    driver: DriverSummary
+    vehicle: VehicleSummary
+
+    pickup_location: str
+    pickup_latitude: float
+    pickup_longitude: float
+
+    destination_location: str
+    destination_latitude: float
+    destination_longitude: float
+
+    departure_time: datetime
+    estimated_arrival_time: Optional[datetime]
+
+    total_seats: int
     available_seats: int
+    price_per_seat: Decimal
+    notes: Optional[str]
 
     status: RideStatus
 
     created_at: datetime
-
     updated_at: datetime
 
     model_config = ConfigDict(
         from_attributes=True,
     )
-
 
 # ======================================================
 # Ride Search Filters
@@ -229,3 +188,13 @@ class RideSearchFilters(BaseModel):
         default=None,
         ge=0,
     )
+# ======================================================
+# QR Boarding
+# ======================================================
+
+class QRVerificationRequest(BaseModel):
+    """
+    Passenger QR verification request.
+    """
+
+    qr_token: str

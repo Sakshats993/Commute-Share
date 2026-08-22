@@ -37,11 +37,11 @@ from app.schemas.vehicle import (
 
 # Ride
 from app.schemas.ride import (
-    RideBase,
     RideCreate,
     RideUpdate,
     RideResponse,
     RideSearchFilters,
+    QRVerificationRequest,
 )
 
 # Booking
@@ -85,11 +85,12 @@ __all__ = [
     "VehicleResponse",
 
     # Ride
-    "RideBase",
+    # Ride
     "RideCreate",
     "RideUpdate",
     "RideResponse",
     "RideSearchFilters",
+    "QRVerificationRequest",
 
     # Booking
     "BookingBase",

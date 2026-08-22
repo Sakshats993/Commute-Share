@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.models.sos_event import SOSEvent
 from app.models.user import User
+from app.models.enums import SOSStatus
 
 from app.schemas.misc import SOSCreate
 
@@ -93,68 +94,110 @@ def create_sos_event(
     sos_data: SOSCreate,
 ) -> SOSEvent:
     """
-    Create a new SOS event.
+    Create an SOS event.
+
+    Automatically determines the user's active ride
+    when possible and prevents duplicate active SOS events.
     """
+
+    # ======================================================
+    # Prevent duplicate active SOS events
+    # ======================================================
+
+    existing_stmt = (
+        select(SOSEvent)
+        .where(
+            SOSEvent.user_id == user.id,
+            SOSEvent.status == SOSStatus.ACTIVE,
+        )
+        .order_by(SOSEvent.created_at.desc())
+    )
+
+    existing_sos = db.scalar(existing_stmt)
+
+    if existing_sos is not None:
+        return existing_sos
+
+    # ======================================================
+    # Determine active ride automatically
+    # ======================================================
+
+    ride_id = sos_data.ride_id
+
+    if ride_id is None:
+        from app.models.ride import Ride
+        from app.models.booking import Booking
+        from app.models.enums import BookingStatus, RideStatus
+
+        # --------------------------------------------------
+        # Driver's active ride
+        # --------------------------------------------------
+
+        driver_ride_stmt = (
+            select(Ride)
+            .where(
+                Ride.driver_id == user.id,
+                Ride.status == RideStatus.IN_PROGRESS,
+            )
+            .order_by(Ride.created_at.desc())
+        )
+
+        active_ride = db.scalar(driver_ride_stmt)
+
+        # --------------------------------------------------
+        # Passenger's active ride
+        # --------------------------------------------------
+
+        if active_ride is None:
+            passenger_ride_stmt = (
+                select(Ride)
+                .join(
+                    Booking,
+                    Booking.ride_id == Ride.id,
+                )
+                .where(
+                    Booking.passenger_id == user.id,
+                    Booking.status == BookingStatus.CONFIRMED,
+                    Ride.status == RideStatus.IN_PROGRESS,
+                )
+                .order_by(Ride.created_at.desc())
+            )
+
+            active_ride = db.scalar(
+                passenger_ride_stmt
+            )
+
+        if active_ride is not None:
+            ride_id = active_ride.id
+        if ride_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You do not have an active ride. SOS can only be triggered during an active ride.",
+            )
+
+    # ======================================================
+    # Create SOS
+    # ======================================================
 
     sos_event = SOSEvent(
         user_id=user.id,
-        **sos_data.model_dump(),
+        ride_id=ride_id,
+        emergency_type=sos_data.emergency_type,
+        description=sos_data.description,
+        latitude=sos_data.latitude,
+        longitude=sos_data.longitude,
     )
 
     try:
-
         db.add(sos_event)
 
         db.commit()
 
         db.refresh(sos_event)
 
-    except Exception:
-
-        db.rollback()
-
-        raise
-
-    return sos_event
-
-
-# ==========================================================
-# Delete SOS Event
-# ==========================================================
-
-def delete_sos_event(
-    db: Session,
-    *,
-    sos_id: int,
-    user: User,
-) -> None:
-    """
-    Delete an SOS event.
-
-    Users may only delete
-    their own SOS events.
-    """
-
-    sos_event = get_sos_by_id(
-        db=db,
-        sos_id=sos_id,
-    )
-
-    if sos_event.user_id != user.id:
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to delete this SOS event.",
-        )
-
-    try:
-
-        db.delete(sos_event)
-
-        db.commit()
+        return sos_event
 
     except Exception:
-
         db.rollback()
-
         raise
+    

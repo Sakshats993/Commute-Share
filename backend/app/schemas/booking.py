@@ -19,7 +19,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import BookingStatus
+from app.models.enums import BookingStatus, RideStatus
 
 
 # ======================================================
@@ -64,6 +64,23 @@ class BookingUpdate(BaseModel):
 
 
 # ======================================================
+# Ride Summary
+# ======================================================
+
+class BookingRideSummary(BaseModel):
+    id: int
+    driver_id: int
+    pickup_location: str
+    destination_location: str
+    departure_time: datetime
+    status: RideStatus
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+
+# ======================================================
 # Booking Response
 # ======================================================
 
@@ -73,7 +90,7 @@ class BookingResponse(BookingBase):
     """
 
     id: int
-
+    
     passenger_id: int
 
     status: BookingStatus
@@ -83,6 +100,8 @@ class BookingResponse(BookingBase):
     created_at: datetime
 
     updated_at: datetime
+
+    ride: BookingRideSummary
 
     model_config = ConfigDict(
         from_attributes=True,

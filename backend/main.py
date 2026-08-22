@@ -26,6 +26,7 @@ from app.api.routes import (
     auth_router,
     bookings_router,
     notifications_router,
+    payments_router,
     ratings_router,
     rides_router,
     sos_router,
@@ -120,6 +121,8 @@ app.include_router(notifications_router)
 app.include_router(sos_router)
 
 app.include_router(admin_router)
+
+app.include_router(payments_router)
 
 
 # ==========================================================

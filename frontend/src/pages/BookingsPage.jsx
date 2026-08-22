@@ -28,12 +28,14 @@ export default function BookingsPage() {
         try {
             await cancel(bookingId);
 
-            toast.success("Booking cancelled.");
+            toast.success("Booking cancelled successfully.");
 
             setSelectedBooking(null);
 
-            await loadBookings();
-            await loadStatistics();
+            await Promise.all([
+                loadBookings(),
+                loadStatistics(),
+            ]);
         } catch (error) {
             toast.error(
                 error.response?.data?.detail ??
@@ -45,7 +47,9 @@ export default function BookingsPage() {
     if (loading) {
         return (
             <Layout>
-                <LoadingSpinner />
+                <div className="flex justify-center py-24">
+                    <LoadingSpinner />
+                </div>
             </Layout>
         );
     }
@@ -53,26 +57,53 @@ export default function BookingsPage() {
     return (
         <Layout>
             <div className="space-y-8">
+                {/* Header */}
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-4xl font-bold text-gray-900">
+                        My Bookings
+                    </h1>
 
-                <h1 className="text-3xl font-bold">
-                    My Bookings
-                </h1>
+                    <p className="text-gray-500">
+                        View, manage and cancel your ride bookings.
+                    </p>
+                </div>
 
-                <BookingStatistics
-                    statistics={statistics}
-                />
-
-                {bookings.length === 0 ? (
-                    <EmptyState
-                        title="No Bookings"
-                        description="You haven't booked any rides yet."
+                {/* Statistics */}
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <BookingStatistics
+                        statistics={statistics}
                     />
-                ) : (
-                    <BookingList
-                        bookings={bookings}
-                        onCancel={setSelectedBooking}
-                    />
-                )}
+                </div>
+
+                {/* Booking List */}
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    {bookings.length === 0 ? (
+                        <EmptyState
+                            title="No Bookings Yet"
+                            description="You haven't booked any rides yet. Browse available rides to get started."
+                        />
+                    ) : (
+                        <>
+                            <div className="mb-6 flex items-center justify-between">
+                                <h2 className="text-xl font-semibold text-gray-900">
+                                    Booking History
+                                </h2>
+
+                                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                                    {bookings.length}{" "}
+                                    {bookings.length === 1
+                                        ? "Booking"
+                                        : "Bookings"}
+                                </span>
+                            </div>
+
+                            <BookingList
+                                bookings={bookings}
+                                onCancel={setSelectedBooking}
+                            />
+                        </>
+                    )}
+                </div>
 
                 <CancelBookingModal
                     booking={selectedBooking}
@@ -81,7 +112,6 @@ export default function BookingsPage() {
                         setSelectedBooking(null)
                     }
                 />
-
             </div>
         </Layout>
     );

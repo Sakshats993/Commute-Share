@@ -177,6 +177,17 @@ class User(BaseModel):
         default=0.0,
         nullable=False,
     )
+    completed_rides: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+
+    review_count: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
     # ======================================================
     # Representation
     # ======================================================

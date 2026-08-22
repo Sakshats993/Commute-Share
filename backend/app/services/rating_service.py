@@ -15,8 +15,18 @@ from app.schemas.misc import RatingCreate, RatingUpdate
 # ---------------------------------------------------------
 
 def update_user_average_rating(db: Session, user_id: int) -> None:
+    """
+    Updates a user's average rating and review count.
+    """
+
     avg = db.scalar(
         select(func.avg(Rating.rating)).where(
+            Rating.reviewee_id == user_id
+        )
+    )
+
+    review_count = db.scalar(
+        select(func.count(Rating.id)).where(
             Rating.reviewee_id == user_id
         )
     )
@@ -24,9 +34,15 @@ def update_user_average_rating(db: Session, user_id: int) -> None:
     user = db.get(User, user_id)
 
     if user:
-        user.average_rating = round(float(avg), 2) if avg else 0.0
-        db.commit()
+        user.average_rating = (
+            round(float(avg), 2)
+            if avg is not None
+            else 0.0
+        )
 
+        user.review_count = review_count or 0
+
+        db.commit()
 
 # ---------------------------------------------------------
 # Create

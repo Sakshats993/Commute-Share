@@ -11,10 +11,13 @@ import RideForm from "../components/rides/RideForm";
 import RideFilters from "../components/rides/RideFilters";
 import DeleteRideModal from "../components/rides/DeleteRideModal";
 
+import useAuth from "../hooks/useAuth";
 import useRides from "../hooks/useRides";
 
 export default function RidesPage() {
     const navigate = useNavigate();
+
+    const { user } = useAuth();
 
     const {
         rides,
@@ -29,6 +32,8 @@ export default function RidesPage() {
     const [deletingRide, setDeletingRide] = useState(null);
     const [showForm, setShowForm] = useState(false);
 
+    const isDriver = user?.role === "driver";
+
     async function handleCreate(data) {
         try {
             await addRide(data);
@@ -42,7 +47,7 @@ export default function RidesPage() {
     async function handleUpdate(data) {
         try {
             await editRide(editingRide.id, data);
-            toast.success("Ride updated");
+            toast.success("Ride updated successfully");
             setEditingRide(null);
         } catch {
             toast.error("Failed to update ride");
@@ -52,7 +57,7 @@ export default function RidesPage() {
     async function handleDelete(id) {
         try {
             await removeRide(id);
-            toast.success("Ride deleted");
+            toast.success("Ride deleted successfully");
             setDeletingRide(null);
         } catch {
             toast.error("Failed to delete ride");
@@ -62,40 +67,48 @@ export default function RidesPage() {
     if (loading) {
         return (
             <Layout>
-                <LoadingSpinner />
+                <div className="flex justify-center py-24">
+                    <LoadingSpinner />
+                </div>
             </Layout>
         );
     }
 
     return (
         <Layout>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">
-                    Available Rides
-                </h1>
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-4xl font-bold text-gray-900">
+                        Available Rides
+                    </h1>
 
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="bg-blue-600 text-white px-5 py-2 rounded-lg"
-                >
-                    Create Ride
-                </button>
+                    <p className="mt-2 text-gray-500">
+                        Browse available rides and manage your trips.
+                    </p>
+                </div>
+
+                {isDriver && (
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
+                    >
+                        + Create Ride
+                    </button>
+                )}
             </div>
 
-            <RideFilters onSearch={search} />
+            <div className="mb-6 rounded-2xl border bg-white p-5 shadow-sm">
+                <RideFilters onSearch={search} />
+            </div>
 
-            {(showForm || editingRide) && (
-                <div className="bg-white shadow rounded-xl p-6 mb-6">
+            {isDriver && (showForm || editingRide) && (
+                <div className="mb-6 rounded-2xl border bg-white p-6 shadow-sm">
                     <RideForm
                         initialData={editingRide}
-                        onSubmit={
-                            editingRide
-                                ? handleUpdate
-                                : handleCreate
-                        }
+                        onSubmit={editingRide ? handleUpdate : handleCreate}
                         onCancel={() => {
-                            setShowForm(false);
                             setEditingRide(null);
+                            setShowForm(false);
                         }}
                     />
                 </div>
@@ -103,15 +116,13 @@ export default function RidesPage() {
 
             {rides.length === 0 ? (
                 <EmptyState
-                    title="No rides found"
-                    description="Create a ride or search another route."
+                    title="No rides available"
+                    description="No rides match your search. Drivers can create a new ride."
                 />
             ) : (
                 <RideList
                     rides={rides}
-                    onView={(ride) =>
-                        navigate(`/rides/${ride.id}`)
-                    }
+                    onView={(ride) => navigate(`/rides/${ride.id}`)}
                     onEdit={setEditingRide}
                     onDelete={setDeletingRide}
                 />

@@ -20,73 +20,76 @@ export default function VehiclesPage() {
         removeVehicle,
     } = useVehicles();
 
-    const [editing, setEditing] =
-        useState(null);
-
-    const [deleting, setDeleting] =
-        useState(null);
-
-    const [showForm, setShowForm] =
-        useState(false);
+    const [editing, setEditing] = useState(null);
+    const [deleting, setDeleting] = useState(null);
+    const [showForm, setShowForm] = useState(false);
 
     async function handleCreate(data) {
-        await addVehicle(data);
-
-        toast.success("Vehicle added");
-
-        setShowForm(false);
+        try {
+            await addVehicle(data);
+            toast.success("Vehicle added successfully");
+            setShowForm(false);
+        } catch {
+            toast.error("Failed to add vehicle");
+        }
     }
 
     async function handleUpdate(data) {
-        await editVehicle(editing.id, data);
-
-        toast.success("Vehicle updated");
-
-        setEditing(null);
+        try {
+            await editVehicle(editing.id, data);
+            toast.success("Vehicle updated successfully");
+            setEditing(null);
+        } catch {
+            toast.error("Failed to update vehicle");
+        }
     }
 
     async function handleDelete(id) {
-        await removeVehicle(id);
-
-        toast.success("Vehicle deleted");
-
-        setDeleting(null);
+        try {
+            await removeVehicle(id);
+            toast.success("Vehicle deleted successfully");
+            setDeleting(null);
+        } catch {
+            toast.error("Failed to delete vehicle");
+        }
     }
 
     if (loading) {
         return (
             <Layout>
-                <LoadingSpinner />
+                <div className="flex justify-center py-24">
+                    <LoadingSpinner />
+                </div>
             </Layout>
         );
     }
 
     return (
         <Layout>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">
-                    My Vehicles
-                </h1>
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-4xl font-bold text-gray-900">
+                        My Vehicles
+                    </h1>
+
+                    <p className="mt-2 text-gray-500">
+                        Register and manage the vehicles you use for ride sharing.
+                    </p>
+                </div>
 
                 <button
-                    onClick={() =>
-                        setShowForm(true)
-                    }
-                    className="bg-blue-600 text-white px-5 py-3 rounded-lg"
+                    onClick={() => setShowForm(true)}
+                    className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
                 >
-                    Add Vehicle
+                    + Add Vehicle
                 </button>
             </div>
 
             {(showForm || editing) && (
-                <div className="bg-white rounded-xl shadow p-6 mb-8">
+                <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                     <VehicleForm
                         initialData={editing}
-                        onSubmit={
-                            editing
-                                ? handleUpdate
-                                : handleCreate
-                        }
+                        onSubmit={editing ? handleUpdate : handleCreate}
                         onCancel={() => {
                             setEditing(null);
                             setShowForm(false);
@@ -97,8 +100,8 @@ export default function VehiclesPage() {
 
             {vehicles.length === 0 ? (
                 <EmptyState
-                    title="No Vehicles"
-                    description="Register your first vehicle."
+                    title="No Vehicles Registered"
+                    description="Add your first vehicle to start creating rides."
                 />
             ) : (
                 <VehicleList
@@ -111,9 +114,7 @@ export default function VehiclesPage() {
             <DeleteVehicleModal
                 vehicle={deleting}
                 onConfirm={handleDelete}
-                onCancel={() =>
-                    setDeleting(null)
-                }
+                onCancel={() => setDeleting(null)}
             />
         </Layout>
     );

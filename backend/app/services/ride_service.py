@@ -19,7 +19,7 @@ Handles:
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from fastapi import HTTPException, status
 
@@ -49,7 +49,14 @@ def get_ride_by_id(
     Return a ride by its ID.
     """
 
-    stmt = select(Ride).where(Ride.id == ride_id)
+    stmt = (
+    select(Ride)
+    .options(
+        selectinload(Ride.driver),
+        selectinload(Ride.vehicle),
+    )
+    .where(Ride.id == ride_id)
+)
 
     ride = db.scalar(stmt)
 
@@ -145,6 +152,9 @@ def create_ride(
 # ======================================================
 # Update Ride
 # ======================================================
+# ======================================================
+# Update Ride
+# ======================================================
 
 def update_ride(
     db: Session,
@@ -160,6 +170,9 @@ def update_ride(
         exclude_unset=True
     )
 
+    # Remember previous status
+    previous_status = ride.status
+
     for field, value in update_data.items():
 
         setattr(
@@ -167,6 +180,13 @@ def update_ride(
             field,
             value,
         )
+
+    # Ride completed for the first time
+    if (
+        previous_status != RideStatus.COMPLETED
+        and ride.status == RideStatus.COMPLETED
+    ):
+        ride.driver.completed_rides += 1
 
     try:
 
@@ -221,14 +241,18 @@ def get_available_rides(
     """
 
     stmt = (
-        select(Ride)
-        .where(
-            Ride.status == RideStatus.SCHEDULED
-        )
-        .order_by(
-            Ride.departure_time
-        )
+    select(Ride)
+    .options(
+        selectinload(Ride.driver),
+        selectinload(Ride.vehicle),
     )
+    .where(
+        Ride.status == RideStatus.SCHEDULED
+    )
+    .order_by(
+        Ride.departure_time
+    )
+)
 
     return list(
         db.scalars(stmt).all()
@@ -247,7 +271,13 @@ def search_rides(
     Search rides using filters.
     """
 
-    stmt = select(Ride)
+    stmt = (
+    select(Ride)
+    .options(
+        selectinload(Ride.driver),
+        selectinload(Ride.vehicle),
+    )
+)
 
     if filters.pickup_location:
 

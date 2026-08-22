@@ -15,7 +15,7 @@ export default function RegisterForm() {
         phone_number: "",
         bio: "",
         profile_image: "",
-        role: "PASSENGER",
+        role: "passenger",
         password: "",
         confirmPassword: "",
     });
@@ -56,10 +56,13 @@ export default function RegisterForm() {
 
             navigate("/login");
         } catch (error) {
-            toast.error(
-                error.response?.data?.detail ??
-                    "Registration failed."
-            );
+            const detail = error.response?.data?.detail;
+
+        if (Array.isArray(detail)) {
+        toast.error(detail.map(err => err.msg).join(", "));
+        } else {
+            toast.error(detail || "Registration failed.");
+        }
         } finally {
             setLoading(false);
         }
@@ -165,12 +168,12 @@ export default function RegisterForm() {
                             onChange={handleChange}
                             className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
-                            <option value="PASSENGER">
-                                Passenger
+                            <option value="passenger">
+                                passenger
                             </option>
 
-                            <option value="DRIVER">
-                                Driver
+                            <option value="driver">
+                                driver
                             </option>
                         </select>
                     </div>

@@ -60,12 +60,11 @@ class SOSEvent(BaseModel):
         index=True,
     )
 
-    ride_id: Mapped[int] = mapped_column(
+    ride_id: Mapped[int | None] = mapped_column(
         ForeignKey("rides.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
-
     # ======================================================
     # Emergency Information
     # ======================================================
@@ -84,14 +83,14 @@ class SOSEvent(BaseModel):
     # User Location
     # ======================================================
 
-    latitude: Mapped[float] = mapped_column(
+    latitude: Mapped[float | None] = mapped_column(
         Float,
-        nullable=False,
+        nullable=True,
     )
 
-    longitude: Mapped[float] = mapped_column(
+    longitude: Mapped[float | None] = mapped_column(
         Float,
-        nullable=False,
+        nullable=True,
     )
 
     # ======================================================

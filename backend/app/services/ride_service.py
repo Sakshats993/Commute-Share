@@ -18,15 +18,23 @@ Handles:
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import HTTPException, status
 
-from app.models.enums import RideStatus
+from app.models.enums import (
+    RideStatus,
+    BookingStatus,
+)
 from app.models.ride import Ride
 from app.models.user import User
 from app.models.vehicle import Vehicle
+from app.models.booking import Booking
+from app.models.payment import Payment
+from app.models.enums import PaymentStatus
 
 from app.schemas.ride import (
     RideCreate,
@@ -35,6 +43,11 @@ from app.schemas.ride import (
 )
 
 from app.services.audit_service import create_audit_log
+from app.services.notification_service import create_notification
+from app.models.enums import NotificationType
+from app.models.booking import Booking
+from app.models.enums import BookingStatus
+from app.models.notification import Notification
 
 
 # ======================================================
@@ -83,25 +96,45 @@ def create_ride(
     """
     Create a new ride.
     """
-
     vehicle = db.scalar(
         select(Vehicle).where(
-            Vehicle.id == ride_data.vehicle_id,
             Vehicle.owner_id == driver.id,
-            Vehicle.is_active.is_(True),
+            Vehicle.registration_number == ride_data.registration_number,
         )
     )
 
+    if vehicle:
+        vehicle.is_active = True
+    else:
+        vehicle = Vehicle(...)
+        db.add(vehicle)
+        db.flush()
+    
+
+    print("Vehicle found:", vehicle)
+    print("Driver ID:", driver.id)
+    print("Registration:", ride_data.registration_number)
+
     if vehicle is None:
 
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Vehicle not found.",
+        vehicle = Vehicle(
+            owner_id=driver.id,
+            make=ride_data.vehicle_make,
+            model=ride_data.vehicle_model,
+            color=ride_data.vehicle_color,
+            registration_number=ride_data.registration_number,
+            seating_capacity=ride_data.vehicle_seating_capacity,
+            is_active=True,
         )
+
+        db.add(vehicle)
+
+        # Generate vehicle.id without committing
+        db.flush()
 
     ride = Ride(
         driver_id=driver.id,
-        vehicle_id=ride_data.vehicle_id,
+        vehicle_id=vehicle.id,
 
         pickup_location=ride_data.pickup_location,
         pickup_latitude=ride_data.pickup_latitude,
@@ -327,3 +360,169 @@ def search_rides(
     return list(
         db.scalars(stmt).all()
     )
+
+# ======================================================
+# Driver Starts Ride
+# ======================================================
+
+def start_ride(
+    db: Session,
+    *,
+    ride: Ride,
+    driver: User,
+) -> Ride:
+    """
+    Driver starts the ride.
+    """
+
+    if ride.driver_id != driver.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only start your own rides.",
+        )
+
+    if ride.status != RideStatus.SCHEDULED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ride cannot be started in its current state.",
+        )
+
+    confirmed_bookings = db.scalars(
+        select(Booking).where(
+            Booking.ride_id == ride.id,
+            Booking.status == BookingStatus.CONFIRMED,
+        )
+    ).all()
+
+    if not confirmed_bookings:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one passenger must be confirmed before starting the ride.",
+        )
+
+    ride.status = RideStatus.IN_PROGRESS
+
+    try:
+        db.commit()
+        db.refresh(ride)
+
+        return ride
+
+    except Exception:
+        db.rollback()
+        raise
+# ======================================================
+# Driver Ends Ride
+# ======================================================
+def end_ride(
+    db: Session,
+    *,
+    ride: Ride,
+    driver: User,
+) -> Ride:
+    """
+    Driver marks the ride as finished.
+    """
+
+    if ride.driver_id != driver.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only end your own rides.",
+        )
+
+    if ride.status != RideStatus.IN_PROGRESS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ride is not in progress.",
+        )
+
+    ride.driver_completed_at = datetime.now(
+        timezone.utc
+    )
+
+    ride.status = (
+        RideStatus.AWAITING_PASSENGER_CONFIRMATION
+    )
+
+    try:
+        db.commit()
+        db.refresh(ride)
+
+        return ride
+
+    except Exception as e:
+        print("END RIDE ERROR:", repr(e))
+        db.rollback()
+        raise
+
+# ======================================================
+# Passenger Confirms Ride
+# ======================================================
+def confirm_ride(
+    db: Session,
+    *,
+    ride: Ride,
+    passenger: User,
+) -> Ride:
+    """
+    Passenger confirms that the ride has ended.
+    """
+
+    booking = db.scalar(
+        select(Booking).where(
+            Booking.ride_id == ride.id,
+            Booking.passenger_id == passenger.id,
+            Booking.status == BookingStatus.CONFIRMED,
+        )
+    )
+
+    if booking is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not booked for this ride.",
+        )
+
+    if (
+        ride.status
+        != RideStatus.AWAITING_PASSENGER_CONFIRMATION
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ride is not awaiting confirmation.",
+        )
+
+    booking.has_confirmed_dropoff = True
+
+    ride.passenger_completed_at = datetime.now(
+        timezone.utc,
+    )
+
+    ride.completed_at = datetime.now(
+        timezone.utc,
+    )
+
+    ride.status = RideStatus.COMPLETED
+
+    ride.driver.completed_rides += 1
+
+    existing_payment = db.scalar(
+        select(Payment).where(
+            Payment.booking_id == booking.id
+        )
+    )
+
+    if existing_payment is None:
+        payment = Payment(
+            ride_id=ride.id,
+            booking_id=booking.id,
+            amount=ride.price_per_seat,
+            status=PaymentStatus.UNPAID,
+        )
+
+        db.add(payment)
+
+    db.commit()
+
+    db.refresh(ride)
+
+    return ride

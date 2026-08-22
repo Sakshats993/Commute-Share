@@ -29,8 +29,15 @@ class RideStatus(str, Enum):
     """
 
     SCHEDULED = "scheduled"
+
+    WAITING_FOR_BOARDING = "waiting_for_boarding"
+
     IN_PROGRESS = "in_progress"
+
+    AWAITING_PASSENGER_CONFIRMATION = "awaiting_passenger_confirmation"
+
     COMPLETED = "completed"
+
     CANCELLED = "cancelled"
 
 
@@ -61,3 +68,13 @@ class SOSStatus(str, Enum):
     ACTIVE = "active"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
+
+class PaymentStatus(str, Enum):
+    """
+    Current payment status.
+    """
+
+    UNPAID = "unpaid"
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"

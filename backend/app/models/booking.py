@@ -30,6 +30,7 @@ from app.models.enums import BookingStatus
 if TYPE_CHECKING:
     from app.models.ride import Ride
     from app.models.user import User
+    from app.models.payment import Payment
 
 
 class Booking(BaseModel):
@@ -75,6 +76,20 @@ class Booking(BaseModel):
     )
 
     # ======================================================
+    # Ride Lifecycle
+    # ======================================================
+
+    has_boarded: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+    )
+
+    has_confirmed_dropoff: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+    )
+
+    # ======================================================
     # Relationships
     # ======================================================
 
@@ -85,6 +100,12 @@ class Booking(BaseModel):
 
     ride: Mapped["Ride"] = relationship(
         back_populates="bookings",
+        lazy="selectin",
+    )
+    payment: Mapped["Payment | None"] = relationship(
+        back_populates="booking",
+        uselist=False,
+        cascade="all, delete-orphan",
         lazy="selectin",
     )
     

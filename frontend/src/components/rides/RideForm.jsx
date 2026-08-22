@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import { getVehicles } from "../../api/vehicles";
 
 const initialForm = {
-    vehicle_id: "",
+    vehicle_make: "",
+    vehicle_model: "",
+    vehicle_color: "",
+    registration_number: "",
+    vehicle_seating_capacity: 4,
+
     pickup_location: "",
     pickup_latitude: "",
     pickup_longitude: "",
@@ -41,8 +46,15 @@ export default function RideForm({
     }, [initialData]);
 
     async function loadVehicles() {
+    try {
         const data = await getVehicles();
+
+        console.log("Vehicles API response:", data);
+
         setVehicles(data);
+    } catch (error) {
+        console.error("Failed to load vehicles:", error);
+        }
     }
 
     function handleChange(e) {
@@ -59,13 +71,34 @@ export default function RideForm({
 
         onSubmit({
             ...form,
-            vehicle_id: Number(form.vehicle_id),
-            pickup_latitude: Number(form.pickup_latitude),
-            pickup_longitude: Number(form.pickup_longitude),
-            destination_latitude: Number(form.destination_latitude),
-            destination_longitude: Number(form.destination_longitude),
-            total_seats: Number(form.total_seats),
-            price_per_seat: Number(form.price_per_seat),
+
+            vehicle_seating_capacity: Number(
+                form.vehicle_seating_capacity
+            ),
+
+            pickup_latitude: Number(
+                form.pickup_latitude
+            ),
+
+            pickup_longitude: Number(
+                form.pickup_longitude
+            ),
+
+            destination_latitude: Number(
+                form.destination_latitude
+            ),
+
+            destination_longitude: Number(
+                form.destination_longitude
+            ),
+
+            total_seats: Number(
+                form.total_seats
+            ),
+
+            price_per_seat: Number(
+                form.price_per_seat
+            ),
         });
     }
 
@@ -77,30 +110,60 @@ export default function RideForm({
             {/* Vehicle */}
             <section>
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                    Vehicle
+                    Vehicle Information
                 </h3>
 
-                <select
-                    name="vehicle_id"
-                    value={form.vehicle_id}
-                    onChange={handleChange}
-                    className={inputClass}
-                    required
-                >
-                    <option value="">
-                        Select Vehicle
-                    </option>
+                <div className="grid gap-4 md:grid-cols-2">
 
-                    {vehicles.map((vehicle) => (
-                        <option
-                            key={vehicle.id}
-                            value={vehicle.id}
-                        >
-                            {vehicle.make} {vehicle.model} -{" "}
-                            {vehicle.registration_number}
-                        </option>
-                    ))}
-                </select>
+                    <input
+                        name="vehicle_make"
+                        placeholder="Vehicle Make"
+                        value={form.vehicle_make}
+                        onChange={handleChange}
+                        className={inputClass}
+                        required
+                    />
+
+                    <input
+                        name="vehicle_model"
+                        placeholder="Vehicle Model"
+                        value={form.vehicle_model}
+                        onChange={handleChange}
+                        className={inputClass}
+                        required
+                    />
+
+                    <input
+                        name="vehicle_color"
+                        placeholder="Vehicle Color"
+                        value={form.vehicle_color}
+                        onChange={handleChange}
+                        className={inputClass}
+                        required
+                    />
+
+                    <input
+                        name="registration_number"
+                        placeholder="Registration Number"
+                        value={form.registration_number}
+                        onChange={handleChange}
+                        className={inputClass}
+                        required
+                    />
+
+                    <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        name="vehicle_seating_capacity"
+                        placeholder="Vehicle Seating Capacity"
+                        value={form.vehicle_seating_capacity}
+                        onChange={handleChange}
+                        className={inputClass}
+                        required
+                    />
+
+                </div>
             </section>
 
             {/* Route */}

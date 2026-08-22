@@ -70,7 +70,6 @@ def get_booking_by_id(
 
     return booking
 
-
 # ==========================================================
 # User Bookings
 # ==========================================================
@@ -81,14 +80,22 @@ def get_user_bookings(
     user_id: int,
 ) -> list[Booking]:
     """
-    Return all bookings
-    belonging to a passenger.
+    Return all bookings relevant to the current user.
+
+    Includes:
+    - Bookings where the user is the passenger
+    - Bookings for rides where the user is the driver
     """
 
     stmt = (
         select(Booking)
+        .join(
+            Ride,
+            Ride.id == Booking.ride_id,
+        )
         .where(
-            Booking.passenger_id == user_id
+            (Booking.passenger_id == user_id)
+            | (Ride.driver_id == user_id)
         )
         .order_by(
             Booking.created_at.desc()
@@ -326,10 +333,8 @@ def create_booking(
     booking = Booking(
         ride_id=ride.id,
         passenger_id=passenger.id,
-        status=BookingStatus.CONFIRMED,
+        status=BookingStatus.PENDING,
     )
-
-    decrease_available_seats(ride)
 
     try:
 
@@ -344,16 +349,15 @@ def create_booking(
         create_notification(
             db=db,
             user_id=passenger.id,
-            title="Ride Booked",
-            message="Your booking has been confirmed.",
+            title="Ride Requested",
+            message="Your ride request has been sent to the driver.",
             notification_type=NotificationType.RIDE_BOOKED,
         )
-
         create_notification(
             db=db,
             user_id=ride.driver_id,
-            title="New Passenger",
-            message=f"{passenger.full_name} booked your ride.",
+            title="New Ride Request",
+            message=f"{passenger.full_name} requested to join your ride.",
             notification_type=NotificationType.RIDE_BOOKED,
         )
 
@@ -373,7 +377,84 @@ def create_booking(
 
     return booking
 
+# ======================================================
+# Confirm Booking
+# ======================================================
 
+def confirm_booking(
+    db: Session,
+    *,
+    booking: Booking,
+    driver: User,
+) -> Booking:
+    """
+    Driver confirms a pending passenger booking.
+    """
+
+    ride = db.scalar(
+        select(Ride).where(
+            Ride.id == booking.ride_id
+        )
+    )
+
+    if ride is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ride not found.",
+        )
+
+    # Only the driver who owns the ride can confirm
+    if ride.driver_id != driver.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only confirm bookings for your own rides.",
+        )
+
+    # Only pending bookings can be confirmed
+    if booking.status != BookingStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only pending bookings can be confirmed.",
+        )
+
+    # Make sure a seat is available
+    if ride.available_seats <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No seats are available.",
+        )
+
+    booking.status = BookingStatus.CONFIRMED
+
+    # Occupy one seat only now
+    ride.available_seats -= 1
+
+    try:
+        db.commit()
+
+        db.refresh(booking)
+
+        create_notification(
+            db=db,
+            user_id=booking.passenger_id,
+            title="Booking Confirmed",
+            message="The driver confirmed your ride booking.",
+            notification_type=NotificationType.BOOKING_CONFIRMED,
+        )
+
+        create_audit_log(
+            db=db,
+            action="BOOKING_CONFIRMED",
+            resource="Booking",
+            user_id=driver.id,
+            description=f"Booking #{booking.id} confirmed.",
+        )
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return booking
 # ==========================================================
 # Join Waitlist
 # ==========================================================
@@ -566,8 +647,9 @@ def promote_waitlist(
         passenger_id=next_passenger.passenger_id,
         status=BookingStatus.CONFIRMED,
     )
+    # Move ride to boarding phase
 
-    decrease_available_seats(ride)
+    decrease_available_seats(ride)  
 
     try:
 
@@ -643,10 +725,15 @@ def cancel_booking(
             detail="Ride not found.",
         )
     
-    booking.status = BookingStatus.CANCELLED
-    booking.cancelled_at = datetime.now(timezone.utc)  
+    was_confirmed = (
+        booking.status == BookingStatus.CONFIRMED
+    )
 
-    increase_available_seats(ride)
+    booking.status = BookingStatus.CANCELLED
+    booking.cancelled_at = datetime.now(timezone.utc)
+
+    if was_confirmed:
+        increase_available_seats(ride)
 
     try:
 

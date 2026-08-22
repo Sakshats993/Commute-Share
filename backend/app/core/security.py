@@ -17,6 +17,7 @@ utilities including:
 """
 
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 from typing import Any
 
 from jose import JWTError, jwt
@@ -165,3 +166,50 @@ def is_access_token(token: str) -> bool:
     payload = decode_token(token)
 
     return payload.get("type") == "access"
+
+# ---------------------------------------------------------
+# QR Boarding Token
+# ---------------------------------------------------------
+
+def create_qr_boarding_token(
+    *,
+    ride_id: int,
+    driver_id: int,
+) -> str:
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=15
+    )
+
+    payload = {
+        "type": "boarding_qr",
+        "ride_id": ride_id,
+        "driver_id": driver_id,
+        "nonce": str(uuid4()),
+        "exp": expire,
+    }
+
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+
+
+def decode_qr_boarding_token(
+    token: str,
+) -> dict:
+    """
+    Decode and validate a boarding QR token.
+    """
+
+    payload = jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+    )
+
+    if payload.get("type") != "boarding_qr":
+        raise JWTError("Invalid boarding QR token.")
+
+    return payload

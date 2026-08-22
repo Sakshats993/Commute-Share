@@ -11,9 +11,12 @@ export default function useBookings() {
         try {
             setLoading(true);
 
-            const data = await bookingsApi.getMyBookings();
+            const data =
+                await bookingsApi.getMyBookings();
 
             setBookings(data);
+
+            return data;
         } finally {
             setLoading(false);
         }
@@ -25,17 +28,29 @@ export default function useBookings() {
                 await bookingsApi.getBookingStatistics();
 
             setStatistics(data);
+
+            return data;
         } catch {
             setStatistics(null);
         }
     }
 
+    async function refreshBookings() {
+        await Promise.all([
+            loadBookings(),
+            loadStatistics(),
+        ]);
+    }
+
     async function cancel(bookingId) {
-        await bookingsApi.cancelBooking(bookingId);
+        await bookingsApi.cancelBooking(
+            bookingId
+        );
 
         setBookings((prev) =>
             prev.filter(
-                (booking) => booking.id !== bookingId
+                (booking) =>
+                    booking.id !== bookingId
             )
         );
     }
@@ -49,8 +64,11 @@ export default function useBookings() {
         bookings,
         statistics,
         loading,
+
         cancel,
+
         loadBookings,
         loadStatistics,
+        refreshBookings,
     };
 }

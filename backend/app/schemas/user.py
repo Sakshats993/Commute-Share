@@ -128,7 +128,6 @@ class UserPublic(UserBase):
 # ======================================================
 # User Response
 # ======================================================
-
 class UserResponse(UserPublic):
     """
     Complete user information returned
@@ -137,8 +136,12 @@ class UserResponse(UserPublic):
 
     is_active: bool
 
-    created_at: datetime
+    average_rating: float
+    trust_score: float
+    completed_rides: int
+    review_count: int
 
+    created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(

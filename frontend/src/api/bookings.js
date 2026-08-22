@@ -32,3 +32,11 @@ export async function getBookingStatistics() {
 export async function cancelBooking(bookingId) {
     await api.delete(`/bookings/${bookingId}`);
 }
+
+export async function confirmBooking(bookingId) {
+    const response = await api.patch(
+        `/bookings/${bookingId}/confirm`
+    );
+
+    return response.data;
+}

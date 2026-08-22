@@ -40,7 +40,20 @@ from app.services.ride_service import (
     get_ride_by_id,
     search_rides,
     update_ride,
+    end_ride,
+    confirm_ride,
+    start_ride,
 )
+from app.core.deps import require_passenger
+from app.models.booking import Booking
+
+from app.schemas.ride import QRVerificationRequest
+
+from app.services.qr_service import (
+    generate_boarding_qr,
+    verify_boarding_qr,
+)
+
 
 router = APIRouter(
     prefix="/rides",
@@ -131,6 +144,56 @@ def search_available_rides(
     )
 
 # ==========================================================
+# Generate Boarding QR
+# ==========================================================
+@router.post(
+    "/{ride_id}/generate-qr",
+)
+def generate_qr(
+    ride_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_driver),
+):
+    ride = get_ride_by_id(
+         db=db,
+        ride_id=ride_id,
+    )
+
+    if ride.driver_id != current_user.id:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=403,
+            detail="You can only generate QR codes for your rides.",
+        )
+
+    token = generate_boarding_qr(
+        ride=ride,
+    )
+
+    return {
+        "qr_token": token,
+    }
+
+    # ==========================================================
+    # Verify Boarding QR
+    # ==========================================================
+
+@router.post(
+    "/verify-boarding",
+    response_model=RideResponse,
+)
+def verify_qr(
+    request: QRVerificationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_passenger),
+):
+    return verify_boarding_qr(
+            db=db,
+            qr_token=request.qr_token,
+            passenger_id=current_user.id,
+        )
+    # ==========================================================
 # Update Ride
 # ==========================================================
 
@@ -163,9 +226,9 @@ def update_ride_route(
         ride_data=ride_data,
     )
 
-# ==========================================================
-# Cancel Ride
-# ==========================================================
+    # ==========================================================
+    # Cancel Ride
+    # ==========================================================
 @router.delete(
     "/{ride_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -176,8 +239,8 @@ def delete_ride_route(
     current_user: User = Depends(require_driver),
 ):
     ride = get_ride_by_id(
-        db=db,
-        ride_id=ride_id,
+            db=db,
+            ride_id=ride_id,
     )
 
     if ride.driver_id != current_user.id:
@@ -195,4 +258,69 @@ def delete_ride_route(
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
+    )
+
+# ==========================================================
+# Start Ride
+# ==========================================================
+
+@router.patch(
+    "/{ride_id}/start",
+    response_model=RideResponse,
+)
+def start_ride_route(
+    ride_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_driver),
+):
+    ride = get_ride_by_id(
+        db=db,
+        ride_id=ride_id,
+    )
+
+    return start_ride(
+        db=db,
+        ride=ride,
+        driver=current_user,
+    )
+
+
+@router.patch(
+    "/{ride_id}/end",
+    response_model=RideResponse,
+)
+def end_ride_route(
+    ride_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_driver),
+):
+    ride = get_ride_by_id(
+        db=db,
+        ride_id=ride_id,
+    )
+
+    return end_ride(
+        db=db,
+        ride=ride,
+        driver=current_user,
+    )
+
+@router.patch(
+    "/{ride_id}/confirm",
+    response_model=RideResponse,
+)
+def confirm_ride_route(
+    ride_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_passenger),
+):
+    ride = get_ride_by_id(
+        db=db,
+        ride_id=ride_id,
+    )
+
+    return confirm_ride(
+        db=db,
+        ride=ride,
+        passenger=current_user,
     )

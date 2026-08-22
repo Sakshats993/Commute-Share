@@ -3,6 +3,7 @@ import BookingCard from "./BookingCard";
 export default function BookingList({
     bookings,
     onCancel,
+    onRideUpdated,
 }) {
     if (!bookings || bookings.length === 0) {
         return (
@@ -25,23 +26,13 @@ export default function BookingList({
 
     return (
         <>
-            <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                    Booking History
-                </h2>
-
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                    {bookings.length}{" "}
-                    {bookings.length === 1 ? "Booking" : "Bookings"}
-                </span>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-2">
                 {bookings.map((booking) => (
                     <BookingCard
                         key={booking.id}
                         booking={booking}
                         onCancel={onCancel}
+                        onRideUpdated={onRideUpdated}
                     />
                 ))}
             </div>

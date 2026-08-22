@@ -27,58 +27,99 @@ export default function SOSPage() {
     }, []);
 
     async function handleTrigger() {
-        const ride_id = prompt("Ride ID");
-
-        if (!ride_id) return;
-
-        const emergency_type = prompt(
-            "Emergency Type"
-        );
-
-        if (!emergency_type) return;
-
-        const description =
-            prompt("Description") || "";
-
-        const latitude = Number(
-            prompt("Latitude")
-        );
-
-        const longitude = Number(
-            prompt("Longitude")
-        );
-
         try {
             setTriggering(true);
 
-            await trigger({
-                ride_id: Number(ride_id),
-                emergency_type,
-                description,
-                latitude,
-                longitude,
-            });
+            const triggerSOS = async (
+                latitude = null,
+                longitude = null
+            ) => {
+                await trigger({
+                    emergency_type: "Emergency",
+                    description:
+                        "SOS triggered by user.",
+                    latitude,
+                    longitude,
+                });
+            };
 
-            toast.success(
-                "SOS triggered successfully."
-            );
+            // Try to get the user's current location
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            await triggerSOS(
+                                position.coords.latitude,
+                                position.coords.longitude
+                            );
+
+                            toast.success(
+                                "SOS triggered successfully."
+                            );
+
+                            await loadEvents();
+                        } catch (error) {
+                            toast.error(
+                                error.response?.data?.detail ??
+                                    "Unable to trigger SOS."
+                            );
+                        } finally {
+                            setTriggering(false);
+                        }
+                    },
+                    async () => {
+                        // Location unavailable/denied.
+                        // SOS should still work.
+                        try {
+                            await triggerSOS();
+
+                            toast.success(
+                                "SOS triggered successfully without location."
+                            );
+
+                            await loadEvents();
+                        } catch (error) {
+                            toast.error(
+                                error.response?.data?.detail ??
+                                    "Unable to trigger SOS."
+                            );
+                        } finally {
+                            setTriggering(false);
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0,
+                    }
+                );
+            } else {
+                await triggerSOS();
+
+                toast.success(
+                    "SOS triggered successfully without location."
+                );
+
+                await loadEvents();
+
+                setTriggering(false);
+            }
         } catch (error) {
             toast.error(
                 error.response?.data?.detail ??
                     "Unable to trigger SOS."
             );
-        } finally {
+
             setTriggering(false);
         }
     }
 
     async function handleView(id) {
         try {
-            const sos =
-                await getDetails(id);
+            const sos = await getDetails(id);
 
             toast.success(
-                `Status: ${sos.status}`
+                `SOS Status: ${sos.status}`
             );
         } catch {
             toast.error(
@@ -90,7 +131,9 @@ export default function SOSPage() {
     if (loading) {
         return (
             <Layout>
-                <LoadingSpinner />
+                <div className="flex justify-center py-24">
+                    <LoadingSpinner />
+                </div>
             </Layout>
         );
     }
@@ -98,9 +141,17 @@ export default function SOSPage() {
     return (
         <Layout>
             <div className="space-y-6">
-                <h1 className="text-3xl font-bold">
-                    Emergency SOS
-                </h1>
+
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        Emergency SOS
+                    </h1>
+
+                    <p className="mt-2 text-gray-500">
+                        Trigger an emergency alert during your ride.
+                        Your active ride will be detected automatically.
+                    </p>
+                </div>
 
                 <SOSButton
                     onTrigger={handleTrigger}
@@ -118,6 +169,7 @@ export default function SOSPage() {
                         onView={handleView}
                     />
                 )}
+
             </div>
         </Layout>
     );

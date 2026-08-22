@@ -36,8 +36,8 @@ export default function DashboardPage() {
         if (user?.id) {
             loadRatings(user.id);
         }
-    }, [user?.id, loadRatings]);
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
     const unreadNotifications = notifications.filter(
         (notification) => !notification.is_read
     ).length;
@@ -45,11 +45,11 @@ export default function DashboardPage() {
     const averageRating =
         ratings.length > 0
             ? (
-                  ratings.reduce(
-                      (sum, rating) => sum + rating.score,
-                      0
-                  ) / ratings.length
-              ).toFixed(1)
+                ratings.reduce(
+                    (sum, rating) => sum + rating.rating,
+                    0
+                ) / ratings.length
+            ).toFixed(1)
             : "0.0";
 
     // Greeting
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
     ratings.slice(0, 2).forEach((rating) => {
         recentActivities.push({
-            title: `Received ${rating.score}★ rating`,
+            title: `Received ${rating.rating}★ rating`,    
             time: rating.created_at,
             icon: <Star className="text-yellow-500" size={18} />,
         });

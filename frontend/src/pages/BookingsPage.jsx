@@ -11,7 +11,7 @@ import CancelBookingModal from "../components/bookings/CancelBookingModal";
 
 import useBookings from "../hooks/useBookings";
 
-export default function BookingsPage() {
+export default function BookingsPage() {    
     const {
         bookings,
         statistics,
@@ -19,6 +19,7 @@ export default function BookingsPage() {
         cancel,
         loadBookings,
         loadStatistics,
+        refreshBookings,
     } = useBookings();
 
     const [selectedBooking, setSelectedBooking] =
@@ -97,10 +98,11 @@ export default function BookingsPage() {
                                 </span>
                             </div>
 
-                            <BookingList
-                                bookings={bookings}
-                                onCancel={setSelectedBooking}
-                            />
+                        <BookingList
+                            bookings={bookings}
+                            onCancel={setSelectedBooking}
+                            onRideUpdated={refreshBookings}
+                        />
                         </>
                     )}
                 </div>

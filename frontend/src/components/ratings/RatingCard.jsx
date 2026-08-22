@@ -3,51 +3,56 @@ export default function RatingCard({
     onEdit,
     onDelete,
 }) {
+    const reviewerRole =
+        rating.reviewer_role === "driver"
+            ? "Driver"
+            : "Passenger";
+
     return (
-        <div className="bg-white rounded-xl shadow border p-5">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <div className="flex justify-between items-start gap-6">
 
-            <div className="flex justify-between items-start">
+                <div className="flex-1">
 
-                <div>
+                    {/* Reviewer */}
+                    <div className="mb-3">
+                        <p className="text-sm text-gray-500">
+                            Rating from {reviewerRole}
+                        </p>
 
-                    <div className="flex items-center gap-2">
-
-                        <span className="text-yellow-500 text-xl">
-                            {"★".repeat(rating.rating)}
-                        </span>
-
-                        <span className="font-semibold">
-                            {rating.rating}/5
-                        </span>
-
+                        <p className="text-lg font-semibold text-gray-900">
+                            {rating.reviewer_name}
+                        </p>
                     </div>
 
+                    {/* Rating */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-yellow-500 text-xl">
+                            {"★".repeat(rating.rating)}
+                            {"☆".repeat(5 - rating.rating)}
+                        </span>
+
+                        <span className="font-semibold text-gray-700">
+                            {rating.rating}/5
+                        </span>
+                    </div>
+
+                    {/* Review */}
                     {rating.review && (
-                        <p className="mt-3 text-gray-700">
-                            {rating.review}
+                        <p className="mt-4 text-gray-700 leading-relaxed">
+                            "{rating.review}"
                         </p>
                     )}
 
-                    <div className="mt-4 text-sm text-gray-500 space-y-1">
-
-                        <p>
-                            Ride ID: {rating.ride_id}
-                        </p>
-
-                        <p>
-                            Reviewer ID: {rating.reviewer_id}
-                        </p>
-
-                        <p>
-                            {new Date(
-                                rating.created_at
-                            ).toLocaleString()}
-                        </p>
-
-                    </div>
-
+                    {/* Date */}
+                    <p className="mt-4 text-sm text-gray-400">
+                        {new Date(
+                            rating.created_at
+                        ).toLocaleString()}
+                    </p>
                 </div>
 
+                {/* Actions */}
                 <div className="flex gap-2">
 
                     <button
@@ -65,9 +70,7 @@ export default function RatingCard({
                     </button>
 
                 </div>
-
             </div>
-
         </div>
     );
 }

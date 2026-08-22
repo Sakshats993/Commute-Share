@@ -18,6 +18,8 @@ from app.api.routes.rides import router as rides_router
 from app.api.routes.sos import router as sos_router
 from app.api.routes.users import router as users_router
 from app.api.routes.vehicles import router as vehicles_router
+from app.api.routes.payments import router as payments_router
+
 
 __all__ = [
     "admin_router",
@@ -29,4 +31,5 @@ __all__ = [
     "sos_router",
     "users_router",
     "vehicles_router",
+    "payments_router",
 ]

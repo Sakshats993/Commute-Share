@@ -11,7 +11,7 @@ export async function getRide(rideId) {
 }
 
 export async function createRide(rideData) {
-    const response = await api.post("/rides", rideData);
+    const response = await api.post("/rides/", rideData);
     return response.data;
 }
 
@@ -38,6 +38,28 @@ export async function searchRides(
             destination,
         },
     });
+
+    return response.data;
+}
+export async function startRide(rideId) {
+    const response = await api.patch(
+        `/rides/${rideId}/start`
+    );
+
+    return response.data;
+}
+export async function confirmRide(rideId) {
+    const response = await api.patch(
+        `/rides/${rideId}/confirm`
+    );
+
+    return response.data;
+}
+
+export async function endRide(rideId) {
+    const response = await api.patch(
+        `/rides/${rideId}/end`
+    );
 
     return response.data;
 }

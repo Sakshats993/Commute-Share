@@ -17,9 +17,11 @@ Features:
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import (
     admin_router,
@@ -68,6 +70,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# User uploaded avatars are stored on the existing local backend filesystem.
+UPLOAD_DIRECTORY = Path(__file__).resolve().parent / "uploads"
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIRECTORY, check_dir=False), name="uploads")
 
 # ==========================================================
 # CORS

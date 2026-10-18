@@ -14,6 +14,9 @@ Handles:
 """
 
 from fastapi import APIRouter, Depends
+from app.models.enums import SOSStatus
+from app.schemas.misc import SOSResponse
+from app.services.sos_service import list_sos_events, update_sos_status
 from sqlalchemy.orm import Session
 
 from app.core.deps import (
@@ -142,4 +145,27 @@ def bookings(
 
     return get_all_bookings(
         db=db,
+    )
+
+
+@router.get("/sos", response_model=list[SOSResponse])
+def sos_events(
+    status_filter: SOSStatus | None = None,
+    db: Session = Depends(get_db),
+):
+    """List safety events for administrative triage."""
+    return list_sos_events(db, status_filter)
+
+
+@router.patch("/sos/{sos_id}/acknowledge", response_model=SOSResponse)
+def acknowledge_sos(sos_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    return update_sos_status(
+        db, sos_id=sos_id, admin=admin, target_status=SOSStatus.ACKNOWLEDGED
+    )
+
+
+@router.patch("/sos/{sos_id}/resolve", response_model=SOSResponse)
+def resolve_sos(sos_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    return update_sos_status(
+        db, sos_id=sos_id, admin=admin, target_status=SOSStatus.RESOLVED
     )

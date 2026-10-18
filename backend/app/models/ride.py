@@ -25,7 +25,6 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
-    Boolean,
     Enum,
     ForeignKey,
     Numeric,

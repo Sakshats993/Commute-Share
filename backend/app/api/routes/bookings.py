@@ -26,6 +26,7 @@ from app.core.deps import (
     get_current_active_user,
     get_db,
     require_driver,
+    require_passenger,
 )
 
 from app.models.user import User
@@ -34,6 +35,7 @@ from app.schemas.booking import (
     BookingCreate,
     BookingResponse,
 )
+from app.schemas.misc import WaitlistResponse
 
 from app.services.booking_service import (
     book_ride,
@@ -59,13 +61,13 @@ router = APIRouter(
 
 @router.post(
     "/",
-    response_model=BookingResponse,
+    response_model=BookingResponse | WaitlistResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def create_booking_route(
     booking_data: BookingCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_passenger),
 ):
     """
     Book a ride.

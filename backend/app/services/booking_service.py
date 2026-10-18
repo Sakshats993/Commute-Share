@@ -20,7 +20,8 @@ Features:
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException, status
@@ -69,6 +70,23 @@ def get_booking_by_id(
         )
 
     return booking
+
+
+def lock_ride_for_booking(db: Session, ride_id: int) -> Ride:
+    """Lock and refresh a ride while changing its bookings or waitlist."""
+    stmt = (
+        select(Ride)
+        .where(Ride.id == ride_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    ride = db.scalar(stmt)
+    if ride is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ride not found.",
+        )
+    return ride
 
 # ==========================================================
 # User Bookings
@@ -330,21 +348,29 @@ def create_booking(
     have already passed.
     """
 
-    booking = Booking(
-        ride_id=ride.id,
-        passenger_id=passenger.id,
-        status=BookingStatus.PENDING,
+    cancelled_booking = db.scalar(
+        select(Booking)
+        .where(
+            Booking.ride_id == ride.id,
+            Booking.passenger_id == passenger.id,
+            Booking.status == BookingStatus.CANCELLED,
+        )
+        .with_for_update()
     )
+    if cancelled_booking is None:
+        booking = Booking(
+            ride_id=ride.id,
+            passenger_id=passenger.id,
+            status=BookingStatus.PENDING,
+        )
+    else:
+        booking = cancelled_booking
+        booking.status = BookingStatus.PENDING
+        booking.cancelled_at = None
 
     try:
 
         db.add(booking)
-
-        db.commit()
-
-        db.refresh(booking)
-
-        db.refresh(ride)
 
         create_notification(
             db=db,
@@ -352,6 +378,7 @@ def create_booking(
             title="Ride Requested",
             message="Your ride request has been sent to the driver.",
             notification_type=NotificationType.RIDE_BOOKED,
+            commit=False,
         )
         create_notification(
             db=db,
@@ -359,6 +386,7 @@ def create_booking(
             title="New Ride Request",
             message=f"{passenger.full_name} requested to join your ride.",
             notification_type=NotificationType.RIDE_BOOKED,
+            commit=False,
         )
 
         create_audit_log(
@@ -367,8 +395,18 @@ def create_booking(
             resource="Booking",
             user_id=passenger.id,
             description=f"Booking #{booking.id} created.",
+            commit=False,
         )
 
+        db.commit()
+        db.refresh(booking)
+
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A booking already exists for this ride.",
+        ) from exc
     except Exception:
 
         db.rollback()
@@ -391,17 +429,13 @@ def confirm_booking(
     Driver confirms a pending passenger booking.
     """
 
-    ride = db.scalar(
-        select(Ride).where(
-            Ride.id == booking.ride_id
-        )
+    ride = lock_ride_for_booking(db, booking.ride_id)
+    booking = db.scalar(
+        select(Booking)
+        .where(Booking.id == booking.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
-
-    if ride is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ride not found.",
-        )
 
     # Only the driver who owns the ride can confirm
     if ride.driver_id != driver.id:
@@ -424,15 +458,36 @@ def confirm_booking(
             detail="No seats are available.",
         )
 
-    booking.status = BookingStatus.CONFIRMED
-
-    # Occupy one seat only now
-    ride.available_seats -= 1
-
     try:
-        db.commit()
+        booking_update = db.execute(
+            update(Booking)
+            .where(
+                Booking.id == booking.id,
+                Booking.status == BookingStatus.PENDING,
+            )
+            .values(status=BookingStatus.CONFIRMED)
+        )
+        if booking_update.rowcount != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This booking is no longer pending.",
+            )
 
-        db.refresh(booking)
+        seat_update = db.execute(
+            update(Ride)
+            .where(
+                Ride.id == ride.id,
+                Ride.available_seats > 0,
+            )
+            .values(available_seats=Ride.available_seats - 1)
+        )
+        if seat_update.rowcount != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No seats are available.",
+            )
 
         create_notification(
             db=db,
@@ -440,6 +495,7 @@ def confirm_booking(
             title="Booking Confirmed",
             message="The driver confirmed your ride booking.",
             notification_type=NotificationType.BOOKING_CONFIRMED,
+            commit=False,
         )
 
         create_audit_log(
@@ -448,7 +504,11 @@ def confirm_booking(
             resource="Booking",
             user_id=driver.id,
             description=f"Booking #{booking.id} confirmed.",
+            commit=False,
         )
+        db.commit()
+        db.refresh(booking)
+        db.refresh(ride)
 
     except Exception:
         db.rollback()
@@ -493,10 +553,6 @@ def join_waitlist(
 
         db.add(waitlist_entry)
 
-        db.commit()
-
-        db.refresh(waitlist_entry)
-
         create_notification(
 
             db=db,
@@ -507,8 +563,8 @@ def join_waitlist(
 
             message="Ride is currently full. You have been added to the waitlist.",
 
-            notification_type=NotificationType.WAITLIST_JOINED,
-
+            notification_type=NotificationType.RIDE_BOOKED,
+            commit=False,
         )   
 
         create_audit_log(
@@ -522,8 +578,17 @@ def join_waitlist(
             user_id=passenger.id,
 
             description=f"Joined waitlist for ride {ride.id}.",
+            commit=False,
         )
+        db.commit()
+        db.refresh(waitlist_entry)
 
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Passenger is already booked or waitlisted for this ride.",
+        ) from exc
     except Exception:
 
         db.rollback()
@@ -551,6 +616,7 @@ def book_ride(
     added to the waitlist.
     """
 
+    ride = lock_ride_for_booking(db, ride.id)
     check_ride_availability(ride)
 
     check_driver_booking_own_ride(
@@ -632,62 +698,84 @@ def promote_waitlist(
     from the waitlist.
     """
 
-    waitlist = get_waitlist(
-        db,
-        ride_id=ride.id,
-    )
-
-    if not waitlist:
-        return None
-
-    next_passenger = waitlist[0]
-
-    booking = Booking(
-        ride_id=ride.id,
-        passenger_id=next_passenger.passenger_id,
-        status=BookingStatus.CONFIRMED,
-    )
-    # Move ride to boarding phase
-
-    decrease_available_seats(ride)  
-
+    ride = lock_ride_for_booking(db, ride.id)
     try:
-
-        db.add(booking)
-
-        db.delete(next_passenger)
-
+        booking = _promote_waitlist_in_transaction(db, ride)
         db.commit()
-
-        db.refresh(booking)
-
-        create_notification(
-            db=db,
-            user_id=booking.passenger_id,
-            title="Ride Available",
-            message="You have been promoted from the waitlist.",
-            notification_type=NotificationType.WAITLIST_PROMOTED,
-        )
-
-        create_audit_log(
-            db=db,
-            action="WAITLIST_PROMOTED",
-            resource="Booking",
-            user_id=booking.passenger_id,
-            description=f"Passenger promoted to ride {ride.id}.",
-        )
-
-        recalculate_waitlist_positions(
-            db=db,
-            ride_id=ride.id,
-        )
-
+        if booking is not None:
+            db.refresh(booking)
+        db.refresh(ride)
+        return booking
     except Exception:
-
         db.rollback()
-
         raise
 
+
+def _promote_waitlist_in_transaction(
+    db: Session,
+    ride: Ride,
+) -> Booking | None:
+    """Promote the first queued passenger inside the caller's transaction."""
+    if ride.available_seats <= 0:
+        return None
+
+    next_entry = db.scalar(
+        select(Waitlist)
+        .where(Waitlist.ride_id == ride.id)
+        .order_by(
+            Waitlist.queue_position,
+            Waitlist.created_at,
+            Waitlist.id,
+        )
+        .with_for_update()
+    )
+    if next_entry is None:
+        return None
+
+    booking = db.scalar(
+        select(Booking)
+        .where(
+            Booking.ride_id == ride.id,
+            Booking.passenger_id == next_entry.passenger_id,
+            Booking.status == BookingStatus.CANCELLED,
+        )
+        .with_for_update()
+    )
+    if booking is None:
+        booking = Booking(
+            ride_id=ride.id,
+            passenger_id=next_entry.passenger_id,
+            status=BookingStatus.CONFIRMED,
+        )
+    else:
+        booking.status = BookingStatus.CONFIRMED
+        booking.cancelled_at = None
+
+    decrease_available_seats(ride)
+    db.add(booking)
+    db.delete(next_entry)
+    db.flush()
+
+    for index, entry in enumerate(get_waitlist(db, ride_id=ride.id), start=1):
+        entry.queue_position = index
+
+    create_notification(
+        db=db,
+        user_id=booking.passenger_id,
+        title="Ride Available",
+        message="You have been promoted from the waitlist.",
+        notification_type=NotificationType.WAITLIST_PROMOTED,
+        commit=False,
+    )
+    create_audit_log(
+        db=db,
+        action="WAITLIST_PROMOTED",
+        resource="Booking",
+        user_id=booking.passenger_id,
+        description=f"Passenger promoted to ride {ride.id}.",
+        commit=False,
+    )
+    db.flush()
     return booking
 
 
@@ -706,40 +794,36 @@ def cancel_booking(
     if possible.
     """
 
+    ride = lock_ride_for_booking(db, booking.ride_id)
+    booking = db.scalar(
+        select(Booking)
+        .where(Booking.id == booking.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if ride.status != RideStatus.SCHEDULED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bookings cannot be cancelled after the ride has started or ended.",
+        )
     if booking.status == BookingStatus.CANCELLED:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Booking is already cancelled.",
         )
 
-    ride = db.scalar(
-        select(Ride).where(
-            Ride.id == booking.ride_id
-        )
-    )
-
-    if ride is None:
-
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ride not found.",
-        )
-    
     was_confirmed = (
         booking.status == BookingStatus.CONFIRMED
     )
 
-    booking.status = BookingStatus.CANCELLED
-    booking.cancelled_at = datetime.now(timezone.utc)
-
-    if was_confirmed:
-        increase_available_seats(ride)
-
     try:
+        booking.status = BookingStatus.CANCELLED
+        booking.cancelled_at = datetime.now(timezone.utc)
 
-        db.commit()
-
-        db.refresh(booking)
+        if was_confirmed:
+            increase_available_seats(ride)
+            _promote_waitlist_in_transaction(db, ride)
 
         create_notification(
             db=db,
@@ -747,6 +831,7 @@ def cancel_booking(
             title="Booking Cancelled",
             message="Your booking has been cancelled.",
             notification_type=NotificationType.RIDE_CANCELLED,
+            commit=False,
         )
 
         create_audit_log(
@@ -755,14 +840,11 @@ def cancel_booking(
             resource="Booking",
             user_id=booking.passenger_id,
             description=f"Booking #{booking.id} cancelled.",
+            commit=False,
         )
-
-        if ride.available_seats > 0:
-
-            promote_waitlist(
-                db=db,
-                ride=ride,
-            )
+        db.commit()
+        db.refresh(booking)
+        db.refresh(ride)
 
     except Exception:
 

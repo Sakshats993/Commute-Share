@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: postgres
 
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -48,6 +48,8 @@ services:
 
     env_file:
       - ./backend/.env.example
+      - path: ./backend/.env
+        required: false
 
     volumes:
       - ./backend:/app
@@ -61,7 +63,7 @@ services:
       --reload
 
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   # ==========================================================
   # Frontend
@@ -87,7 +89,7 @@ services:
     command: npm run dev -- --host
 
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
 
 volumes:
 

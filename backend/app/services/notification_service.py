@@ -35,6 +35,7 @@ def create_notification(
     title: str,
     message: str,
     notification_type: NotificationType,
+    commit: bool = True,
 ) -> Notification:
     """
     Create a notification for a user.
@@ -49,8 +50,11 @@ def create_notification(
 
     try:
         db.add(notification)
-        db.commit()
-        db.refresh(notification)
+        if commit:
+            db.commit()
+            db.refresh(notification)
+        else:
+            db.flush()
 
     except Exception:
         db.rollback()

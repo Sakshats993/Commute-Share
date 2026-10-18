@@ -84,6 +84,22 @@ export function AuthProvider({ children }) {
         }
     }
 
+    async function loginWithAccessToken(token) {
+        authStore.setAuth(token, null);
+        try {
+            const currentUser = await authApi.getCurrentUser();
+            authStore.updateUser(currentUser);
+            setUser(currentUser);
+            setAuthenticated(true);
+            return currentUser;
+        } catch (error) {
+            authStore.logout();
+            setUser(null);
+            setAuthenticated(false);
+            throw error;
+        }
+    }
+
     async function register(userData) {
         return await authApi.register(userData);
     }
@@ -117,6 +133,7 @@ export function AuthProvider({ children }) {
         loading,
         authenticated,
         login,
+        loginWithAccessToken,
         register,
         logout,
         refreshUser,

@@ -53,9 +53,7 @@ export default function SOSPage() {
                                 position.coords.longitude
                             );
 
-                            toast.success(
-                                "SOS triggered successfully."
-                            );
+                            toast.success("SOS event recorded. Admins are notified in-app when configured.");
 
                             await loadEvents();
                         } catch (error) {
@@ -73,9 +71,7 @@ export default function SOSPage() {
                         try {
                             await triggerSOS();
 
-                            toast.success(
-                                "SOS triggered successfully without location."
-                            );
+                            toast.success("SOS event recorded without location. Admins are notified in-app when configured.");
 
                             await loadEvents();
                         } catch (error) {
@@ -96,9 +92,7 @@ export default function SOSPage() {
             } else {
                 await triggerSOS();
 
-                toast.success(
-                    "SOS triggered successfully without location."
-                );
+                toast.success("SOS event recorded without location. Admins are notified in-app when configured.");
 
                 await loadEvents();
 
@@ -148,8 +142,7 @@ export default function SOSPage() {
                     </h1>
 
                     <p className="mt-2 text-gray-500">
-                        Trigger an emergency alert during your ride.
-                        Your active ride will be detected automatically.
+                        Record a safety event during an active ride. It appears in CommuteShare and notifies configured administrators in-app. This does not contact emergency services or provide live dispatch; call local emergency services if you need immediate help. Location is shared only if you allow browser location access.
                     </p>
                 </div>
 

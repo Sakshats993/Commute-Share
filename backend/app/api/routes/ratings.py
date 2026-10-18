@@ -7,7 +7,7 @@ Rating Routes
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_active_user, get_db
 from app.models.rating import Rating
 from app.models.user import User
 from app.schemas.misc import (
@@ -42,7 +42,7 @@ router = APIRouter(
 def create_rating_route(
     rating_data: RatingCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ):
     return create_rating(
         db=db,
@@ -56,7 +56,7 @@ def create_rating_route(
 )
 def get_my_ratings_route(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ):
     return get_user_ratings(
         db=db,
@@ -69,27 +69,11 @@ def get_my_ratings_route(
 )
 def get_rating_candidates_route(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ):
     return get_rating_candidates(
         db=db,
         current_user=current_user,
-    )
-# =====================================================
-# Get My Ratings
-# =====================================================
-
-@router.get(
-    "/me",
-    response_model=list[RatingResponse],
-)
-def get_my_ratings_route(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return get_user_ratings(
-        db=db,
-        user_id=current_user.id,
     )
 # =====================================================
 # Get Ratings for User
@@ -121,7 +105,7 @@ def update_rating_route(
     rating_id: int,
     rating_data: RatingUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ):
     rating = db.get(Rating, rating_id)
 
@@ -155,7 +139,7 @@ def update_rating_route(
 def delete_rating_route(
     rating_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ):
     rating = db.get(Rating, rating_id)
 

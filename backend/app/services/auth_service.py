@@ -16,29 +16,40 @@ Handles:
 
 from __future__ import annotations
 
-from sqlalchemy import select
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
+
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException, status
 
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     hash_password,
     verify_password,
 )
+from app.models.enums import UserRole
 from app.models.user import User
 
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginResponse,
+    PasswordResetConfirm,
 )
 
 from app.schemas.user import UserCreate
 
 from app.services.audit_service import (
+    create_audit_log,
     log_login,
     log_registration,
 )
+from app.services.email_service import send_password_reset_email
+from app.utils.logger import logger
 
 
 # ======================================================
@@ -108,7 +119,7 @@ def register_user(
         phone_number=user_data.phone_number,
         bio=user_data.bio,
         profile_image=user_data.profile_image,
-        role=user_data.role,
+        role=UserRole(user_data.role),
     )
 
     try:
@@ -210,6 +221,96 @@ def login_user(
         access_token=token,
         token_type="bearer",
     )
+
+
+def request_password_reset(db: Session, email: str) -> None:
+    """Email a short-lived reset link without revealing whether an account exists."""
+    normalized_email = email.strip().lower()
+    user = db.scalar(
+        select(User)
+        .where(func.lower(User.email) == normalized_email, User.is_active.is_(True))
+        .with_for_update()
+    )
+    if user is None:
+        return
+
+    now = datetime.now(timezone.utc)
+    last_request = user.password_reset_requested_at
+    if last_request is not None:
+        if last_request.tzinfo is None:
+            last_request = last_request.replace(tzinfo=timezone.utc)
+        if now - last_request < timedelta(seconds=60):
+            return
+
+    token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    user.password_reset_token_hash = token_hash
+    user.password_reset_expires_at = now + timedelta(
+        minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
+    )
+    user.password_reset_requested_at = now
+    db.commit()
+
+    reset_url = (
+        f"{settings.FRONTEND_URL.rstrip('/')}/reset-password#token={quote(token)}"
+    )
+    try:
+        send_password_reset_email(user.email, reset_url)
+    except Exception as exc:
+        db.execute(
+            update(User)
+            .where(User.id == user.id, User.password_reset_token_hash == token_hash)
+            .values(
+                password_reset_token_hash=None,
+                password_reset_expires_at=None,
+                password_reset_requested_at=None,
+            )
+        )
+        db.commit()
+        logger.warning("Password reset email delivery failed: {}", type(exc).__name__)
+
+
+def reset_password(db: Session, reset_data: PasswordResetConfirm) -> None:
+    """Atomically consume an unexpired reset token and replace its password."""
+    token_hash = hashlib.sha256(reset_data.token.encode("utf-8")).hexdigest()
+    statement = (
+        update(User)
+        .where(
+            User.password_reset_token_hash == token_hash,
+            User.password_reset_expires_at > func.now(),
+            User.is_active.is_(True),
+        )
+        .values(
+            password_hash=hash_password(reset_data.new_password),
+            password_reset_token_hash=None,
+            password_reset_expires_at=None,
+            password_reset_requested_at=None,
+        )
+        .returning(User.id)
+    )
+
+    try:
+        user_id = db.execute(statement).scalar_one_or_none()
+        if user_id is None:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This password reset link is invalid or expired.",
+            )
+        create_audit_log(
+            db=db,
+            user_id=user_id,
+            action="PASSWORD_RESET",
+            resource="Authentication",
+            description="Password reset completed.",
+            commit=False,
+        )
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 # ======================================================

@@ -4,15 +4,19 @@ import { Bell, CheckCheck } from "lucide-react";
 import Layout from "../components/ui/Layout";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
+import ErrorMessage from "../components/ui/ErrorMessage";
 
 import NotificationList from "../components/notifications/NotificationList";
 
 import useNotifications from "../hooks/useNotifications";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function NotificationsPage() {
     const {
         notifications,
         loading,
+        error,
+        loadNotifications,
         markRead,
         markAllRead,
     } = useNotifications();
@@ -72,7 +76,7 @@ export default function NotificationsPage() {
                                 className="text-blue-600"
                             />
 
-                            <h1 className="text-4xl font-bold text-gray-900">
+                            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
                                 Notifications
                             </h1>
                         </div>
@@ -107,7 +111,12 @@ export default function NotificationsPage() {
                     </div>
                 )}
 
-                {notifications.length === 0 ? (
+                {error ? (
+                    <ErrorMessage
+                        message={getApiErrorMessage(error, "Unable to load notifications right now.")}
+                        onRetry={loadNotifications}
+                    />
+                ) : notifications.length === 0 ? (
                     <EmptyState
                         title="No Notifications"
                         description="You don't have any notifications yet."

@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import LoginPage from "../pages/LoginPage";
+import OAuthCallbackPage from "../pages/OAuthCallbackPage";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
 import RegisterPage from "../pages/RegisterPage";
 import DashboardPage from "../pages/DashboardPage";
 import RidesPage from "../pages/RidesPage";
@@ -28,6 +31,9 @@ export default function AppRoutes() {
             />
 
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
             <Route

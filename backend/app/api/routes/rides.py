@@ -14,13 +14,16 @@ Handles:
 ==================================================
 """
 
+from datetime import datetime
+from decimal import Decimal
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.schemas.ride import RideSearchFilters
 
 from app.core.deps import (
-    get_current_active_user,
     get_db,
     require_driver,
 )
@@ -45,8 +48,6 @@ from app.services.ride_service import (
     start_ride,
 )
 from app.core.deps import require_passenger
-from app.models.booking import Booking
-
 from app.schemas.ride import QRVerificationRequest
 
 from app.services.qr_service import (
@@ -101,6 +102,37 @@ def get_rides(
         db=db,
     )
 # ==========================================================
+# Search Rides
+# ==========================================================
+
+@router.get(
+    "/search",
+    response_model=list[RideResponse],
+)
+def search_available_rides(
+    source: str | None = Query(default=None, min_length=1, max_length=255),
+    destination: str | None = Query(default=None, min_length=1, max_length=255),
+    departure_date: datetime | None = Query(default=None),
+    minimum_available_seats: int | None = Query(default=None, ge=1, le=99),
+    maximum_price: Decimal | None = Query(default=None, ge=0, max_digits=10, decimal_places=2),
+    sort_by: Literal["departure_time", "price"] = Query(default="departure_time"),
+    db: Session = Depends(get_db),
+):
+    filters = RideSearchFilters(
+        pickup_location=source.strip() if source else None,
+        destination_location=destination.strip() if destination else None,
+        departure_date=departure_date,
+        minimum_available_seats=minimum_available_seats,
+        maximum_price=maximum_price,
+        sort_by=sort_by,
+    )
+
+    return search_rides(
+        db=db,
+        filters=filters,
+    )
+
+# ==========================================================
 # Ride Details
 # ==========================================================
 
@@ -120,29 +152,6 @@ def get_ride(
         db=db,
         ride_id=ride_id,
     )
-# ==========================================================
-# Search Rides
-# ==========================================================
-
-@router.get(
-    "/search/",
-    response_model=list[RideResponse],
-)
-def search_available_rides(
-    source: str = Query(...),
-    destination: str = Query(...),
-    db: Session = Depends(get_db),
-):
-    filters = RideSearchFilters(
-        pickup_location=source,
-        destination_location=destination,
-    )
-
-    return search_rides(
-        db=db,
-        filters=filters,
-    )
-
 # ==========================================================
 # Generate Boarding QR
 # ==========================================================

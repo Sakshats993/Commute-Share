@@ -4,18 +4,21 @@ import toast from "react-hot-toast";
 import Layout from "../components/ui/Layout";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
+import ErrorMessage from "../components/ui/ErrorMessage";
 
 import BookingStatistics from "../components/bookings/BookingStatistics";
 import BookingList from "../components/bookings/BookingList";
 import CancelBookingModal from "../components/bookings/CancelBookingModal";
 
 import useBookings from "../hooks/useBookings";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function BookingsPage() {    
     const {
         bookings,
         statistics,
         loading,
+        error,
         cancel,
         loadBookings,
         loadStatistics,
@@ -60,7 +63,7 @@ export default function BookingsPage() {
             <div className="space-y-8">
                 {/* Header */}
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-4xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
                         My Bookings
                     </h1>
 
@@ -78,7 +81,12 @@ export default function BookingsPage() {
 
                 {/* Booking List */}
                 <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    {bookings.length === 0 ? (
+            {error ? (
+                <ErrorMessage
+                    message={getApiErrorMessage(error, "Unable to load bookings right now.")}
+                    onRetry={refreshBookings}
+                />
+            ) : bookings.length === 0 ? (
                         <EmptyState
                             title="No Bookings Yet"
                             description="You haven't booked any rides yet. Browse available rides to get started."

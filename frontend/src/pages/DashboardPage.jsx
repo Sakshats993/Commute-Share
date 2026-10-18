@@ -26,15 +26,15 @@ export default function DashboardPage() {
 
     const { user } = useAuth();
 
-    const { rides } = useRides();
-    const { bookings } = useBookings();
-    const { notifications } = useNotifications();
+    const { rides, loading: ridesLoading } = useRides();
+    const { bookings, loading: bookingsLoading } = useBookings();
+    const { notifications, loading: notificationsLoading } = useNotifications();
 
-    const { ratings, loadRatings } = useRatings();
+    const { ratings, loading: ratingsLoading, loadRatings } = useRatings();
 
     useEffect(() => {
         if (user?.id) {
-            loadRatings(user.id);
+            loadRatings(user.id).catch(() => {});
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id]);
@@ -112,9 +112,9 @@ export default function DashboardPage() {
         <Layout>
             {/* Greeting */}
             <div className="mb-10">
-                <h1 className="text-4xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
                     {emoji} {greeting},
-                    <span className="ml-2 text-green-600">
+                    <span className="block text-green-600 sm:inline sm:ml-2">
                         {user?.full_name}
                     </span>
                 </h1>
@@ -128,28 +128,28 @@ export default function DashboardPage() {
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                 <DashboardCard
                     title="Available Rides"
-                    value={rides.length}
+                    value={ridesLoading ? "…" : rides.length}
                     description="Rides currently available"
                     onClick={() => navigate(ROUTES.RIDES)}
                 />
 
                 <DashboardCard
                     title="My Bookings"
-                    value={bookings.length}
+                    value={bookingsLoading ? "…" : bookings.length}
                     description="Bookings you've made"
                     onClick={() => navigate(ROUTES.BOOKINGS)}
                 />
 
                 <DashboardCard
                     title="Unread Notifications"
-                    value={unreadNotifications}
+                    value={notificationsLoading ? "…" : unreadNotifications}
                     description="Pending updates"
                     onClick={() => navigate(ROUTES.NOTIFICATIONS)}
                 />
 
                 <DashboardCard
                     title="Average Rating"
-                    value={averageRating}
+                    value={ratingsLoading ? "…" : averageRating}
                     description="Community feedback"
                     onClick={() => navigate(ROUTES.RATINGS)}
                 />
@@ -202,13 +202,14 @@ export default function DashboardPage() {
                         <div className="flex justify-between">
                             <div className="flex items-center gap-3">
                                 <Leaf className="text-green-600" size={20} />
-                                <span>Estimated CO₂ Saved</span>
+                                <span>CO₂ savings</span>
                             </div>
 
                             <span className="font-semibold">
-                                {(bookings.length * 2.5).toFixed(1)} kg
+                                Not calculated
                             </span>
                         </div>
+                        <p className="text-right text-xs text-gray-500">Route and vehicle emissions data are not available to support an estimate.</p>
 
                     </div>
                 </div>
@@ -226,7 +227,14 @@ export default function DashboardPage() {
                         </span>
                     </div>
 
-                    <div className="mb-6 h-3 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                        className="mb-6 h-3 overflow-hidden rounded-full bg-gray-200"
+                        role="progressbar"
+                        aria-label="Profile completion"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={profileCompletion}
+                    >
                         <div
                             className="h-full rounded-full bg-green-600 transition-all duration-500"
                             style={{

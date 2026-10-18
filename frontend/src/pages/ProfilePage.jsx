@@ -1,3 +1,5 @@
+import { useState } from "react";
+import toast from "react-hot-toast";
 import {
     Award,
     BadgeCheck,
@@ -11,10 +13,60 @@ import {
 } from "lucide-react";
 
 import Layout from "../components/ui/Layout";
+import UserAvatar from "../components/common/UserAvatar";
 import useAuth from "../hooks/useAuth";
+import { updateProfile, uploadAvatar } from "../api/users";
 
 export default function ProfilePage() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
+    const [uploading, setUploading] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState({ full_name: "", phone_number: "", bio: "" });
+
+    function startProfileEdit() {
+        setProfileForm({ full_name: user.full_name ?? "", phone_number: user.phone_number ?? "", bio: user.bio ?? "" });
+        setEditing(true);
+    }
+
+    async function saveProfile(event) {
+        event.preventDefault();
+        setSavingProfile(true);
+        try {
+            await updateProfile(profileForm);
+            await refreshUser();
+            setEditing(false);
+            toast.success("Profile updated.");
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "Could not update profile.");
+        } finally {
+            setSavingProfile(false);
+        }
+    }
+
+    async function handleAvatarUpload(event) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
+            toast.error("Choose a JPEG, PNG, or WebP image.");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Avatar images must be 5 MB or smaller.");
+            return;
+        }
+        setUploading(true);
+        try {
+            await uploadAvatar(file);
+            await refreshUser();
+            toast.success("Profile photo updated.");
+        } catch (error) {
+            toast.error(error.response?.data?.detail || "Could not upload profile photo.");
+        } finally {
+            setUploading(false);
+        }
+    }
 
     if (!user) {
         return (
@@ -34,14 +86,6 @@ export default function ProfilePage() {
     const roleLabel =
         role.charAt(0).toUpperCase() +
         role.slice(1);
-
-    const initials =
-        user.full_name
-            ?.split(" ")
-            .map((name) => name[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase() || "U";
 
     const joinedDate = user.created_at
         ? new Date(
@@ -132,19 +176,27 @@ export default function ProfilePage() {
 
                     <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 
-                        {/* Profile Image / Initials */}
-                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white/30 bg-white text-3xl font-bold text-blue-600 shadow-lg">
-
-                            {user.profile_image ? (
-                                <img
-                                    src={user.profile_image}
-                                    alt={user.full_name}
-                                    className="h-full w-full object-cover"
+                        <div className="flex shrink-0 flex-col items-center gap-3">
+                            <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white/30 bg-white shadow-lg">
+                                <UserAvatar user={user} alt={`${user.full_name}'s avatar`} className="h-full w-full object-cover" />
+                            </div>
+                            <label
+                                htmlFor="avatar-upload"
+                                aria-busy={uploading}
+                                className={`inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-white ${uploading ? "cursor-wait opacity-70" : ""}`}
+                            >
+                                {uploading ? "Uploading…" : "Upload photo"}
+                                <input
+                                    id="avatar-upload"
+                                    className="sr-only"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    disabled={uploading}
+                                    onChange={handleAvatarUpload}
+                                    aria-label="Upload profile photo"
                                 />
-                            ) : (
-                                initials
-                            )}
-
+                            </label>
+                            <p className="text-center text-xs text-blue-100">Optional · JPEG, PNG, or WebP · up to 5 MB</p>
                         </div>
 
                         {/* User Information */}
@@ -339,29 +391,35 @@ export default function ProfilePage() {
                                 Your account and contact information.
                             </p>
                         </div>
-
-                        <div className="grid gap-5 md:grid-cols-2">
-
-                            {profileItems.map((item) => (
-                                <div
-                                    key={item.label}
-                                    className="rounded-xl border border-gray-200 p-5 transition hover:border-blue-400 hover:shadow-md"
-                                >
-                                    <div className="mb-2 flex items-center gap-2">
-                                        {item.icon}
-
-                                        <span className="text-sm font-medium text-gray-500">
-                                            {item.label}
-                                        </span>
-                                    </div>
-
-                                    <p className="break-words text-lg font-semibold text-gray-900">
-                                        {item.value}
-                                    </p>
+                        {editing ? (
+                            <form onSubmit={saveProfile} className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700" htmlFor="profile-full-name">Full name
+                                    <input id="profile-full-name" required minLength={2} maxLength={100} value={profileForm.full_name} onChange={(event) => setProfileForm((current) => ({ ...current, full_name: event.target.value }))} className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3" />
+                                </label>
+                                <label className="block text-sm font-medium text-gray-700" htmlFor="profile-phone">Phone number
+                                    <input id="profile-phone" type="tel" maxLength={20} autoComplete="tel" value={profileForm.phone_number} onChange={(event) => setProfileForm((current) => ({ ...current, phone_number: event.target.value }))} className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3" />
+                                </label>
+                                <label className="block text-sm font-medium text-gray-700" htmlFor="profile-bio">Bio
+                                    <textarea id="profile-bio" maxLength={500} rows={3} value={profileForm.bio} onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))} className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-3" />
+                                </label>
+                                <div className="flex flex-wrap gap-3">
+                                    <button disabled={savingProfile} type="submit" className="min-h-11 rounded-xl bg-blue-600 px-5 py-2 font-medium text-white disabled:opacity-60">{savingProfile ? "Saving…" : "Save profile"}</button>
+                                    <button disabled={savingProfile} type="button" onClick={() => setEditing(false)} className="min-h-11 rounded-xl border border-gray-300 px-5 py-2 font-medium text-gray-700">Cancel</button>
                                 </div>
-                            ))}
-
-                        </div>
+                            </form>
+                        ) : (
+                            <>
+                                <div className="grid gap-5 md:grid-cols-2">
+                                    {profileItems.map((item) => (
+                                        <div key={item.label} className="rounded-xl border border-gray-200 p-5 transition hover:border-blue-400 hover:shadow-md">
+                                            <div className="mb-2 flex items-center gap-2">{item.icon}<span className="text-sm font-medium text-gray-500">{item.label}</span></div>
+                                            <p className="break-words text-lg font-semibold text-gray-900">{item.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" onClick={startProfileEdit} className="min-h-11 rounded-xl bg-blue-600 px-5 py-2 font-medium text-white">Edit profile</button>
+                            </>
+                        )}
 
                     </div>
 

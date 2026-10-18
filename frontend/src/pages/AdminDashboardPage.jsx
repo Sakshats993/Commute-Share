@@ -8,6 +8,7 @@ import AdminStatistics from "../components/admin/AdminStatistics";
 import UsersTable from "../components/admin/UsersTable";
 import RidesTable from "../components/admin/RidesTable";
 import BookingsTable from "../components/admin/BookingsTable";
+import SafetyTriage from "../components/admin/SafetyTriage";
 
 import useAdmin from "../hooks/useAdmin";
 
@@ -17,10 +18,12 @@ export default function AdminDashboardPage() {
         users,
         rides,
         bookings,
+        sosEvents,
         loading,
         loadDashboard,
         activate,
         deactivate,
+        updateSos,
     } = useAdmin();
 
     useEffect(() => {
@@ -57,6 +60,15 @@ export default function AdminDashboardPage() {
         }
     }
 
+    async function handleSosUpdate(id, action) {
+        try {
+            await updateSos(id, action);
+            toast.success(`SOS event ${action === "resolve" ? "resolved" : "acknowledged"}.`);
+        } catch (error) {
+            toast.error(error.response?.data?.detail ?? "Unable to update SOS event.");
+        }
+    }
+
     if (loading) {
         return (
             <Layout>
@@ -76,6 +88,8 @@ export default function AdminDashboardPage() {
                 <AdminStatistics
                     statistics={statistics}
                 />
+
+                <SafetyTriage events={sosEvents} onUpdate={handleSosUpdate} />
 
                 <section className="space-y-4">
 

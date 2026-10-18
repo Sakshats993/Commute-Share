@@ -12,6 +12,7 @@ export default function useRides() {
     async function loadRides() {
         try {
             setLoading(true);
+            setError(null);
 
             const data =
                 await rideApi.getRides();
@@ -26,63 +27,66 @@ export default function useRides() {
         }
     }
 
-    async function search(
-        source,
-        destination
-    ) {
+    async function search(filters = {}) {
+        const activeFilters = Object.fromEntries(
+            Object.entries(filters).filter(([key, value]) => key !== "sort_by" && value !== "" && value != null)
+        );
+        if (Object.keys(activeFilters).length === 0 && filters.sort_by !== "price") {
+            await loadRides();
+            return;
+        }
+
         try {
             setLoading(true);
+            setError(null);
 
             const data =
                 await rideApi.searchRides(
-                    source,
-                    destination
+                    filters
                 );
 
             setRides(data);
+        } catch (err) {
+            setError(err);
+            setRides([]);
         } finally {
             setLoading(false);
         }
     }
 
     async function addRide(data) {
-        const newRide =
-            await rideApi.createRide(data);
-
-        setRides((prev) => [
-            newRide,
-            ...prev,
-        ]);
+        try {
+            const newRide = await rideApi.createRide(data);
+            setError(null);
+            setRides((prev) => [newRide, ...prev]);
+        } catch (err) {
+            throw err;
+        }
     }
 
     async function editRide(
         id,
         data
     ) {
-        const updated =
-            await rideApi.updateRide(
-                id,
-                data
+        try {
+            const updated = await rideApi.updateRide(id, data);
+            setError(null);
+            setRides((prev) =>
+                prev.map((ride) => (ride.id === id ? updated : ride))
             );
-
-        setRides((prev) =>
-            prev.map((ride) =>
-                ride.id === id
-                    ? updated
-                    : ride
-            )
-        );
+        } catch (err) {
+            throw err;
+        }
     }
 
     async function removeRide(id) {
-        await rideApi.deleteRide(id);
-
-        setRides((prev) =>
-            prev.filter(
-                (ride) =>
-                    ride.id !== id
-            )
-        );
+        try {
+            await rideApi.deleteRide(id);
+            setError(null);
+            setRides((prev) => prev.filter((ride) => ride.id !== id));
+        } catch (err) {
+            throw err;
+        }
     }
 
     useEffect(() => {

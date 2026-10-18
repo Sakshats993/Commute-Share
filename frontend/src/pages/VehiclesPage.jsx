@@ -4,17 +4,21 @@ import toast from "react-hot-toast";
 import Layout from "../components/ui/Layout";
 import EmptyState from "../components/ui/EmptyState";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
+import ErrorMessage from "../components/ui/ErrorMessage";
 
 import VehicleForm from "../components/vehicles/VehicleForm";
 import VehicleList from "../components/vehicles/VehicleList";
 import DeleteVehicleModal from "../components/vehicles/DeleteVehicleModal";
 
 import useVehicles from "../hooks/useVehicles";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function VehiclesPage() {
     const {
         vehicles,
         loading,
+        error,
+        loadVehicles,
         addVehicle,
         editVehicle,
         removeVehicle,
@@ -29,8 +33,8 @@ export default function VehiclesPage() {
             await addVehicle(data);
             toast.success("Vehicle added successfully");
             setShowForm(false);
-        } catch {
-            toast.error("Failed to add vehicle");
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Failed to add vehicle."));
         }
     }
 
@@ -39,8 +43,8 @@ export default function VehiclesPage() {
             await editVehicle(editing.id, data);
             toast.success("Vehicle updated successfully");
             setEditing(null);
-        } catch {
-            toast.error("Failed to update vehicle");
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Failed to update vehicle."));
         }
     }
 
@@ -49,8 +53,8 @@ export default function VehiclesPage() {
             await removeVehicle(id);
             toast.success("Vehicle deleted successfully");
             setDeleting(null);
-        } catch {
-            toast.error("Failed to delete vehicle");
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Failed to delete vehicle."));
         }
     }
 
@@ -68,7 +72,7 @@ export default function VehiclesPage() {
         <Layout>
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
                         My Vehicles
                     </h1>
 
@@ -98,7 +102,12 @@ export default function VehiclesPage() {
                 </div>
             )}
 
-            {vehicles.length === 0 ? (
+            {error ? (
+                <ErrorMessage
+                    message={getApiErrorMessage(error, "Unable to load vehicles right now.")}
+                    onRetry={loadVehicles}
+                />
+            ) : vehicles.length === 0 ? (
                 <EmptyState
                     title="No Vehicles Registered"
                     description="Add your first vehicle to start creating rides."

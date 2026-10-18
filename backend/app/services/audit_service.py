@@ -37,6 +37,7 @@ def create_audit_log(
     description: Optional[str] = None,
     ip_address: Optional[str] = None,
     user_agent: Optional[str] = None,
+    commit: bool = True,
 ) -> AuditLog:
     """
     Create and persist an audit log entry.
@@ -65,8 +66,11 @@ def create_audit_log(
 
     try:
         db.add(audit_log)
-        db.commit()
-        db.refresh(audit_log)
+        if commit:
+            db.commit()
+            db.refresh(audit_log)
+        else:
+            db.flush()
 
     except Exception:
         db.rollback()

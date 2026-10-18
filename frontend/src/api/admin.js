@@ -47,3 +47,13 @@ export async function deactivateUser(userId) {
 
     return response.data;
 }
+
+export async function getSosEvents() {
+    const response = await api.get("/admin/sos");
+    return response.data;
+}
+
+export async function updateSosEvent(sosId, action) {
+    const response = await api.patch(`/admin/sos/${sosId}/${action}`);
+    return response.data;
+}

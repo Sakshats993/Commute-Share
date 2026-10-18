@@ -4,17 +4,20 @@ import toast from "react-hot-toast";
 import Layout from "../components/ui/Layout";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import EmptyState from "../components/ui/EmptyState";
+import ErrorMessage from "../components/ui/ErrorMessage";
 
 import RatingForm from "../components/ratings/RatingForm";
 import RatingList from "../components/ratings/RatingList";
 
 import useRatings from "../hooks/useRatings";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function RatingsPage() {
     const {
         ratings,
         candidates,
         loading,
+        error,
         loadRatings,
         loadCandidates,
         addRating,
@@ -47,6 +50,14 @@ export default function RatingsPage() {
 
         load();
     }, []);
+
+    async function retryLoad() {
+        try {
+            await Promise.all([loadRatings(), loadCandidates()]);
+        } catch {
+            // The hook retains the error for the alert above.
+        }
+    }
 
     async function handleSubmit(data) {
         try {
@@ -129,9 +140,16 @@ export default function RatingsPage() {
         <Layout>
             <div className="space-y-8">
 
+                {error && (
+                    <ErrorMessage
+                        message={getApiErrorMessage(error, "Unable to load ratings right now.")}
+                        onRetry={retryLoad}
+                    />
+                )}
+
                 {/* Header */}
                 <div>
-                    <h1 className="text-4xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
                         Ratings
                     </h1>
 

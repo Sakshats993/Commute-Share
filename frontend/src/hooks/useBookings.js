@@ -5,11 +5,13 @@ import * as bookingsApi from "../api/bookings";
 export default function useBookings() {
     const [bookings, setBookings] = useState([]);
     const [statistics, setStatistics] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     async function loadBookings() {
         try {
             setLoading(true);
+            setError(null);
 
             const data =
                 await bookingsApi.getMyBookings();
@@ -17,6 +19,10 @@ export default function useBookings() {
             setBookings(data);
 
             return data;
+        } catch (err) {
+            setError(err);
+            setBookings([]);
+            return [];
         } finally {
             setLoading(false);
         }
@@ -64,6 +70,7 @@ export default function useBookings() {
         bookings,
         statistics,
         loading,
+        error,
 
         cancel,
 

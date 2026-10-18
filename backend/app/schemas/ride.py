@@ -17,7 +17,7 @@ Includes:
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -35,8 +35,6 @@ class DriverSummary(BaseModel):
     id: int
 
     full_name: str
-
-    email: str
 
     average_rating: float
 
@@ -75,26 +73,26 @@ class VehicleSummary(BaseModel):
 # ======================================================
 
 class RideCreate(BaseModel):
-    vehicle_make: str
-    vehicle_model: str
-    vehicle_color: str
-    registration_number: str
-    vehicle_seating_capacity: int
+    vehicle_make: str = Field(..., min_length=1, max_length=50)
+    vehicle_model: str = Field(..., min_length=1, max_length=50)
+    vehicle_color: str = Field(..., min_length=1, max_length=30)
+    registration_number: str = Field(..., min_length=1, max_length=20)
+    vehicle_seating_capacity: int = Field(..., ge=2, le=100)
 
-    pickup_location: str
-    pickup_latitude: float
-    pickup_longitude: float
+    pickup_location: str = Field(..., min_length=1, max_length=255)
+    pickup_latitude: float = Field(..., ge=-90, le=90, allow_inf_nan=False)
+    pickup_longitude: float = Field(..., ge=-180, le=180, allow_inf_nan=False)
 
-    destination_location: str
-    destination_latitude: float
-    destination_longitude: float
+    destination_location: str = Field(..., min_length=1, max_length=255)
+    destination_latitude: float = Field(..., ge=-90, le=90, allow_inf_nan=False)
+    destination_longitude: float = Field(..., ge=-180, le=180, allow_inf_nan=False)
 
     departure_time: datetime
     estimated_arrival_time: Optional[datetime] = None
 
-    total_seats: int
-    price_per_seat: Decimal
-    notes: Optional[str] = None
+    total_seats: int = Field(..., ge=1, le=99)
+    price_per_seat: Decimal = Field(..., ge=0, max_digits=10, decimal_places=2)
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 # ======================================================
@@ -107,23 +105,21 @@ class RideUpdate(BaseModel):
     Schema used to update ride details.
     """
 
-    pickup_location: Optional[str] = None
-    pickup_latitude: Optional[float] = None
-    pickup_longitude: Optional[float] = None
+    pickup_location: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    pickup_latitude: Optional[float] = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    pickup_longitude: Optional[float] = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
 
-    destination_location: Optional[str] = None
-    destination_latitude: Optional[float] = None
-    destination_longitude: Optional[float] = None
+    destination_location: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    destination_latitude: Optional[float] = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    destination_longitude: Optional[float] = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
 
     departure_time: Optional[datetime] = None
     estimated_arrival_time: Optional[datetime] = None
 
-    total_seats: Optional[int] = None
-    price_per_seat: Optional[Decimal] = None
+    total_seats: Optional[int] = Field(default=None, ge=1, le=99)
+    price_per_seat: Optional[Decimal] = Field(default=None, ge=0, max_digits=10, decimal_places=2)
 
-    notes: Optional[str] = None
-
-    status: Optional[RideStatus] = None
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
     model_config = ConfigDict(
         extra="forbid",
@@ -187,7 +183,11 @@ class RideSearchFilters(BaseModel):
     maximum_price: Optional[Decimal] = Field(
         default=None,
         ge=0,
+        max_digits=10,
+        decimal_places=2,
     )
+
+    sort_by: Literal["departure_time", "price"] = "departure_time"
 # ======================================================
 # QR Boarding
 # ======================================================

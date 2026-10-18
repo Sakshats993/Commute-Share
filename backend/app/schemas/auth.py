@@ -64,6 +64,19 @@ class ChangePasswordRequest(BaseModel):
         description="New account password.",
     )
 
+
+class PasswordResetRequest(BaseModel):
+    """Request a password reset link for an email address."""
+
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Set a new password using a one-time reset token."""
+
+    token: str = Field(..., min_length=40, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
 # ======================================================
 # JWT Token
 # ======================================================

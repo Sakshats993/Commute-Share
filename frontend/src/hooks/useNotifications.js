@@ -8,15 +8,20 @@ export default function useNotifications() {
 
     const [loading, setLoading] =
         useState(true);
+    const [error, setError] = useState(null);
 
     async function loadNotifications() {
         try {
             setLoading(true);
+            setError(null);
 
             const data =
                 await notificationApi.getNotifications();
 
             setNotifications(data);
+        } catch (err) {
+            setError(err);
+            setNotifications([]);
         } finally {
             setLoading(false);
         }
@@ -59,6 +64,7 @@ export default function useNotifications() {
     return {
         notifications,
         loading,
+        error,
         loadNotifications,
         loadUnread,
         markRead,

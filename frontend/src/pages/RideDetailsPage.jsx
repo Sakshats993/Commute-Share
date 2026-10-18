@@ -16,6 +16,8 @@
 
     import Layout from "../components/ui/Layout";
     import LoadingSpinner from "../components/ui/LoadingSpinner";
+    import RideMap from "../components/map/RideMap";
+    import UserAvatar from "../components/common/UserAvatar";
 
     import {
         getRide,
@@ -247,13 +249,13 @@
             {/* Hero Banner */}
             {/* ========================================= */}
 
-            <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-10 text-white shadow-xl">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 text-white shadow-xl sm:p-8 lg:p-10">
 
                 <div className="flex flex-col items-center text-center">
 
-                    <h1 className="text-4xl font-bold lg:text-5xl">
+                    <h1 className="break-words text-2xl font-bold sm:text-3xl lg:text-5xl">
                         {ride.pickup_location}
-                        <span className="mx-4 text-blue-200">→</span>
+                        <span aria-hidden="true" className="mx-2 text-blue-200 sm:mx-4">→</span>
                         {ride.destination_location}
                     </h1>
 
@@ -286,7 +288,10 @@
 
                 </div>
 
-            </div>               
+            </div>
+            <div className="mt-6">
+                <RideMap ride={ride} />
+            </div>
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
 
                 {/* Driver */}
@@ -297,11 +302,7 @@
                         👤 Driver
                     </h2>
 
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-600 text-3xl font-bold text-white">
-
-                        {ride.driver.full_name.charAt(0)}
-
-                    </div>
+                    <UserAvatar user={ride.driver} className="mx-auto h-20 w-20 rounded-full object-cover" />
 
                     <h3 className="mt-5 text-xl font-bold text-gray-900">
                         {ride.driver.full_name}
@@ -309,10 +310,6 @@
 
                     <p className="mt-1 text-gray-500">
                         Driver
-                    </p>
-
-                    <p className="mt-3 text-sm text-gray-500">
-                        {ride.driver.email}
                     </p>
 
                     <div className="mt-6 w-full space-y-3">

@@ -7,20 +7,11 @@ export default function DashboardCard({
     const clickable = typeof onClick === "function";
 
     return (
-        <div
+        <button
+            type="button"
             onClick={onClick}
-            onKeyDown={(e) => {
-                if (
-                    clickable &&
-                    (e.key === "Enter" || e.key === " ")
-                ) {
-                    e.preventDefault();
-                    onClick();
-                }
-            }}
-            role={clickable ? "button" : undefined}
-            tabIndex={clickable ? 0 : undefined}
-            className={`
+            disabled={!clickable}
+            className={`w-full text-left
                 rounded-2xl
                 border
                 border-gray-200
@@ -31,8 +22,8 @@ export default function DashboardCard({
                 duration-200
                 ${
                     clickable
-                        ? "cursor-pointer hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-green-500"
-                        : ""
+                        ? "cursor-pointer hover:-translate-y-1 hover:shadow-xl active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                        : "cursor-default"
                 }
             `}
         >
@@ -42,7 +33,7 @@ export default function DashboardCard({
                         {title}
                     </p>
 
-                    <h2 className="mt-3 text-4xl font-bold text-gray-900">
+                    <h2 className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl">
                         {value}
                     </h2>
 
@@ -57,6 +48,6 @@ export default function DashboardCard({
                     <div className="h-3 w-3 rounded-full bg-green-600"></div>
                 </div>
             </div>
-        </div>
+        </button>
     );
 }

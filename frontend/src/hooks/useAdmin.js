@@ -15,6 +15,8 @@ export default function useAdmin() {
     const [bookings, setBookings] =
         useState([]);
 
+    const [sosEvents, setSosEvents] = useState([]);
+
     const [loading, setLoading] =
         useState(false);
 
@@ -27,17 +29,20 @@ export default function useAdmin() {
                 userData,
                 rideData,
                 bookingData,
+                safetyEvents,
             ] = await Promise.all([
                 adminApi.getDashboardStatistics(),
                 adminApi.getUsers(),
                 adminApi.getRides(),
                 adminApi.getBookings(),
+                adminApi.getSosEvents(),
             ]);
 
             setStatistics(stats);
             setUsers(userData);
             setRides(rideData);
             setBookings(bookingData);
+            setSosEvents(safetyEvents);
         } finally {
             setLoading(false);
         }
@@ -69,14 +74,22 @@ export default function useAdmin() {
         );
     }
 
+    async function updateSos(id, action) {
+        const updated = await adminApi.updateSosEvent(id, action);
+        setSosEvents((items) => items.map((event) => event.id === id ? updated : event));
+        return updated;
+    }
+
     return {
         statistics,
         users,
         rides,
         bookings,
+        sosEvents,
         loading,
         loadDashboard,
         activate,
         deactivate,
+        updateSos,
     };
 }

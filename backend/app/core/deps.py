@@ -24,7 +24,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
 
-from app.core.security import get_token_subject
+from app.core.security import get_token_subject, is_access_token
 from app.database.session import SessionLocal
 from app.models.user import User
 from sqlalchemy import select
@@ -72,6 +72,8 @@ def get_current_user(
 
     try:
         subject = get_token_subject(token)
+        if not is_access_token(token):
+            raise credentials_exception
 
     except JWTError:
         raise credentials_exception

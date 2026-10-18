@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from fastapi import HTTPException, status
@@ -33,6 +33,7 @@ from app.models.ride import Ride
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.booking import Booking
+from app.models.waitlist import Waitlist
 from app.models.payment import Payment
 from app.models.enums import PaymentStatus
 
@@ -43,11 +44,6 @@ from app.schemas.ride import (
 )
 
 from app.services.audit_service import create_audit_log
-from app.services.notification_service import create_notification
-from app.models.enums import NotificationType
-from app.models.booking import Booking
-from app.models.enums import BookingStatus
-from app.models.notification import Notification
 
 
 # ======================================================
@@ -103,19 +99,17 @@ def create_ride(
         )
     )
 
-    if vehicle:
-        vehicle.is_active = True
-    else:
-        vehicle = Vehicle(...)
-        db.add(vehicle)
-        db.flush()
-    
-
-    print("Vehicle found:", vehicle)
-    print("Driver ID:", driver.id)
-    print("Registration:", ride_data.registration_number)
-
     if vehicle is None:
+        registration_owner = db.scalar(
+            select(Vehicle).where(
+                Vehicle.registration_number == ride_data.registration_number,
+            )
+        )
+        if registration_owner is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This vehicle registration is already in use.",
+            )
 
         vehicle = Vehicle(
             owner_id=driver.id,
@@ -131,6 +125,14 @@ def create_ride(
 
         # Generate vehicle.id without committing
         db.flush()
+    else:
+        vehicle.is_active = True
+
+    if ride_data.total_seats > vehicle.seating_capacity - 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Seats offered cannot exceed vehicle capacity minus the driver.",
+        )
 
     ride = Ride(
         driver_id=driver.id,
@@ -202,6 +204,34 @@ def update_ride(
     update_data = ride_data.model_dump(
         exclude_unset=True
     )
+
+    requested_seats = update_data.get("total_seats")
+    if requested_seats is not None and requested_seats != ride.total_seats:
+        active_bookings = db.scalar(
+            select(func.count(Booking.id)).where(
+                Booking.ride_id == ride.id,
+                Booking.status.in_(
+                    [BookingStatus.PENDING, BookingStatus.CONFIRMED]
+                ),
+            )
+        )
+        waitlist_entries = db.scalar(
+            select(func.count(Waitlist.id)).where(
+                Waitlist.ride_id == ride.id
+            )
+        )
+        if active_bookings or waitlist_entries:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Seat capacity cannot change while bookings or waitlist entries exist.",
+            )
+        if requested_seats > ride.vehicle.seating_capacity - 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Seats offered cannot exceed vehicle capacity minus the driver.",
+            )
+        ride.available_seats = requested_seats
+        ride.total_seats = requested_seats
 
     # Remember previous status
     previous_status = ride.status
@@ -335,14 +365,14 @@ def search_rides(
             filters.departure_date
         )
 
-    if filters.maximum_price:
+    if filters.maximum_price is not None:
 
         stmt = stmt.where(
             Ride.price_per_seat <=
             filters.maximum_price
         )
 
-    if filters.minimum_available_seats:
+    if filters.minimum_available_seats is not None:
 
         stmt = stmt.where(
             Ride.available_seats >=
@@ -353,9 +383,8 @@ def search_rides(
         Ride.status == RideStatus.SCHEDULED
     )
 
-    stmt = stmt.order_by(
-        Ride.departure_time
-    )
+    ordering = Ride.price_per_seat if filters.sort_by == "price" else Ride.departure_time
+    stmt = stmt.order_by(ordering, Ride.id)
 
     return list(
         db.scalars(stmt).all()
@@ -400,7 +429,7 @@ def start_ride(
             detail="At least one passenger must be confirmed before starting the ride.",
         )
 
-    ride.status = RideStatus.IN_PROGRESS
+    ride.status = RideStatus.WAITING_FOR_BOARDING
 
     try:
         db.commit()
@@ -450,8 +479,7 @@ def end_ride(
 
         return ride
 
-    except Exception as e:
-        print("END RIDE ERROR:", repr(e))
+    except Exception:
         db.rollback()
         raise
 

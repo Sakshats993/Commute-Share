@@ -67,6 +67,25 @@ class Settings(BaseSettings):
 
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Optional OAuth login configuration. Provider logins remain hidden
+    # until each provider has both credentials configured.
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
+    GITHUB_OAUTH_CLIENT_ID: str | None = None
+    GITHUB_OAUTH_CLIENT_SECRET: str | None = None
+    BACKEND_PUBLIC_URL: str = "http://127.0.0.1:8000"
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # Optional SMTP configuration used only for password reset emails.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = Field(default=587, ge=1, le=65535)
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
+    SMTP_USE_SSL: bool = False
+    SMTP_STARTTLS: bool = True
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = Field(default=30, gt=0, le=1440)
+
     # ==========================================================
     # Password Hashing
     # ==========================================================
@@ -100,6 +119,18 @@ class Settings(BaseSettings):
 
             return [origin.strip() for origin in value.split(",")]
 
+        return value
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, value):
+        """Accept environment names as a safe shorthand for debug mode."""
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "production", "prod"}:
+                return False
+            if normalized in {"development", "dev", "debug"}:
+                return True
         return value
 
     # ==========================================================

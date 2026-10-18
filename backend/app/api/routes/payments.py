@@ -14,18 +14,17 @@ Handles:
 ==================================================
 """
 
-from fastapi import (
-    APIRouter,
-    Depends,
-)
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from sqlalchemy.orm import Session
 
 from app.core.deps import (
     get_db,
     get_current_active_user,
+    require_admin,
 )
 
+from app.models.enums import UserRole
 from app.models.user import User
 
 from app.schemas.payment import (
@@ -45,16 +44,26 @@ from app.services.payment_service import (
     get_driver_earnings,
     get_revenue_statistics,
 )
-from app.core.deps import (
-    require_driver,
-    require_passenger,
-    require_admin,
-)
+from app.core.deps import require_driver, require_passenger
 
 router = APIRouter(
     prefix="/payments",
     tags=["Payments"],
 )
+
+
+def ensure_payment_access(payment, current_user: User) -> None:
+    """Allow payment reads only to a participant or an administrator."""
+    if current_user.role == UserRole.ADMIN:
+        return
+
+    is_passenger = payment.booking.passenger_id == current_user.id
+    is_driver = payment.ride.driver_id == current_user.id
+    if not (is_passenger or is_driver):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this payment.",
+        )
 
 
 # ======================================================
@@ -76,6 +85,7 @@ def get_payment_route(
         db=db,
         payment_id=payment_id,
     )
+    ensure_payment_access(payment, current_user)
 
     return payment
 
@@ -99,6 +109,7 @@ def get_booking_payment_route(
         db=db,
         booking_id=booking_id,
     )
+    ensure_payment_access(payment, current_user)
 
     return payment
 
@@ -115,9 +126,7 @@ def mark_paid_route(
     payment_id: int,
     payment_data: PaymentUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        get_current_active_user
-    ),
+    current_user: User = Depends(require_admin),
 ):
     payment = get_payment(
         db=db,
@@ -142,9 +151,7 @@ def mark_paid_route(
 def mark_failed_route(
     payment_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        get_current_active_user
-    ),
+    current_user: User = Depends(require_admin),
 ):
     payment = get_payment(
         db=db,

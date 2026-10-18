@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --primary: #2563eb;
@@ -28,3 +29,54 @@ body {
     "Segoe UI",
     sans-serif;
 }
+
+.auth-shell {
+  background:
+    radial-gradient(ellipse at 8% 8%, rgba(187, 247, 208, 0.62), transparent 32%),
+    radial-gradient(ellipse at 92% 90%, rgba(219, 234, 254, 0.55), transparent 30%),
+    #f8fafc;
+}
+
+html.dark .auth-shell {
+  background:
+    radial-gradient(ellipse at 8% 8%, rgba(6, 78, 59, 0.32), transparent 34%),
+    radial-gradient(ellipse at 92% 90%, rgba(30, 58, 138, 0.24), transparent 32%),
+    #0b1220;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html.dark {
+  color-scheme: dark;
+  --background: #0b1220;
+  --card: #111c2e;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+html.dark body { background: var(--background); color: var(--text); }
+html.dark .bg-white { background-color: #111c2e; }
+html.dark .bg-gray-50, html.dark .bg-slate-50 { background-color: #172338; }
+html.dark .bg-gray-100, html.dark .bg-slate-100 { background-color: #223047; }
+html.dark .text-gray-900, html.dark .text-gray-800, html.dark .text-slate-900 { color: #f1f5f9; }
+html.dark .text-gray-700, html.dark .text-gray-600, html.dark .text-slate-700 { color: #cbd5e1; }
+html.dark .text-gray-500, html.dark .text-slate-500 { color: #94a3b8; }
+html.dark .border-gray-200, html.dark .border-gray-300, html.dark .border-slate-200 { border-color: #334155; }
+html.dark input, html.dark textarea, html.dark select { background-color: #111c2e; color: #e2e8f0; border-color: #475569; }
+html.dark input::placeholder, html.dark textarea::placeholder { color: #94a3b8; }
+html.dark .leaflet-popup-content-wrapper, html.dark .leaflet-popup-tip { background: #111c2e; color: #e2e8f0; }
+html.dark .recharts-cartesian-axis-tick-value, html.dark .recharts-legend-item-text { fill: #cbd5e1 !important; color: #cbd5e1 !important; }

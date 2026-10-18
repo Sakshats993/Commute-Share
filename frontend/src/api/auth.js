@@ -69,3 +69,15 @@ export async function changePassword(data) {
         data
     );
 }
+
+export async function requestPasswordReset(email) {
+    const response = await api.post("/auth/password-reset/request", { email });
+    return response.data;
+}
+
+export async function confirmPasswordReset(token, newPassword) {
+    await api.post("/auth/password-reset/confirm", {
+        token,
+        new_password: newPassword,
+    });
+}

@@ -28,15 +28,12 @@ export async function deleteRide(rideId) {
     await api.delete(`/rides/${rideId}`);
 }
 
-export async function searchRides(
-    source,
-    destination
-) {
+export async function searchRides(filters) {
+    const params = Object.fromEntries(
+        Object.entries(filters).filter(([, value]) => value !== "" && value != null)
+    );
     const response = await api.get("/rides/search", {
-        params: {
-            source,
-            destination,
-        },
+        params,
     });
 
     return response.data;

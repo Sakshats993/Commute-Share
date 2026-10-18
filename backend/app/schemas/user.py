@@ -16,7 +16,7 @@ Includes:
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -61,9 +61,17 @@ class UserCreate(UserBase):
     Schema used during registration.
     """
 
-    role: UserRole = Field(
+    role: Literal["driver", "passenger"] = Field(
         default=UserRole.PASSENGER,
-        description="Role selected during registration",
+        description="Public role selected during registration",
+    )
+
+    phone_number: str = Field(
+        ...,
+        min_length=10,
+        max_length=10,
+        pattern=r"^[6-9]\d{9}$",
+        description="10-digit Indian mobile number.",
     )
 
     password: str = Field(
@@ -109,12 +117,18 @@ class UserUpdate(BaseModel):
 # Public User
 # ======================================================
 
-class UserPublic(UserBase):
+class UserPublic(BaseModel):
     """
     Public information about a user.
     """
 
     id: int
+
+    full_name: str
+
+    bio: Optional[str] = None
+
+    profile_image: Optional[str] = None
 
     role: UserRole
 
@@ -128,13 +142,19 @@ class UserPublic(UserBase):
 # ======================================================
 # User Response
 # ======================================================
-class UserResponse(UserPublic):
+class UserResponse(UserBase):
     """
     Complete user information returned
     to the authenticated user.
     """
 
     is_active: bool
+
+    id: int
+
+    role: UserRole
+
+    is_verified: bool
 
     average_rating: float
     trust_score: float

@@ -18,7 +18,7 @@ Contains schemas for:
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import NotificationType, SOSStatus
 
@@ -154,13 +154,21 @@ class SOSCreate(BaseModel):
         default=None,
         ge=-90,
         le=90,
+        allow_inf_nan=False,
     )
 
     longitude: Optional[float] = Field(
         default=None,
         ge=-180,
         le=180,
+        allow_inf_nan=False,
     )
+
+    @model_validator(mode="after")
+    def validate_coordinate_pair(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Latitude and longitude must be provided together.")
+        return self
 
 # ======================================================
 # SOS Response

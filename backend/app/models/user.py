@@ -19,9 +19,10 @@ A user can:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, Float, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, Float, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base_model import BaseModel
@@ -46,6 +47,10 @@ class User(BaseModel):
     """
 
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("google_subject", name="uq_users_google_subject"),
+        UniqueConstraint("github_subject", name="uq_users_github_subject"),
+    )
 
     # ======================================================
     # Authentication
@@ -66,6 +71,31 @@ class User(BaseModel):
     password_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
+    )
+
+    google_subject: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    github_subject: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    password_reset_token_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    password_reset_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     phone_number: Mapped[str | None] = mapped_column(

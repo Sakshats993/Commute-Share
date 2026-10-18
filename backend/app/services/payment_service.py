@@ -24,7 +24,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.enums import PaymentStatus
+from app.models.booking import Booking
 from app.models.payment import Payment
+from app.models.ride import Ride
 
 
 # ======================================================

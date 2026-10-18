@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # CommuteShare
 
 CommuteShare is a community ride-sharing application for people travelling along similar routes. Drivers can publish rides and manage vehicles; passengers can search rides, request seats, and follow booking updates.
@@ -1628,4 +1627,3 @@ And the result is a platform that demonstrates practical experience across:
 **If you found this project interesting, consider giving the repository a ⭐**
 
 </div>
->>>>>>> origin/main
